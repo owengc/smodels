@@ -137,6 +137,9 @@ void SmodelsAudioProcessor::releaseResources()
 
 void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
 {
+    
+    int blockSize = getBlockSize();
+    std::cout << "Block size: " << blockSize << std::endl;
     // This is the place where you'd normally do the guts of your plugin's
     // audio processing...
     for (int channel = 0; channel < getNumInputChannels(); ++channel)
