@@ -10,6 +10,14 @@
               pluginRTASCategory="" aaxIdentifier="com.yourcompany.smodels"
               pluginAAXCategory="AAX_ePlugInCategory_Dynamics" jucerVersion="3.1.0">
   <MAINGROUP id="gH0J4m" name="smodels">
+    <GROUP id="{61D434F1-47FD-43DD-6164-89A2DF93AD9C}" name="WDL">
+      <FILE id="sKvSbZ" name="fft.c" compile="1" resource="0" file="../../WDL/fft.c"/>
+      <FILE id="Qdq86r" name="fft.h" compile="0" resource="0" file="../../WDL/fft.h"/>
+    </GROUP>
+    <GROUP id="{1EA455EA-8216-F2F6-E05F-6C83AE7D9B1C}" name="DSP">
+      <FILE id="psYyFS" name="Analysis.cpp" compile="1" resource="0" file="Source/Analysis.cpp"/>
+      <FILE id="CcUY1m" name="Analysis.h" compile="0" resource="0" file="Source/Analysis.h"/>
+    </GROUP>
     <GROUP id="{86072D25-0807-3A5E-C9E2-82098EF99BEF}" name="Source">
       <FILE id="B9lHGJ" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>

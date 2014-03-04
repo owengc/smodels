@@ -12,7 +12,7 @@
 #define PLUGINPROCESSOR_H_INCLUDED
 
 #include "../JuceLibraryCode/JuceHeader.h"
-
+#include "Analysis.h"
 
 //==============================================================================
 /**
@@ -66,7 +66,36 @@ public:
     void getStateInformation (MemoryBlock& destData);
     void setStateInformation (const void* data, int sizeInBytes);
 
+    //Custom Methods, Params, and Public Data
+    int getAnalysisSize(const int range) const;
+    float getAnalysisValue(const int index, const int dim) const;
+    /*enum Parameters{
+        MasterBypass = 0,
+        Mix,
+        Decay,
+        CombDelay1,
+        CombDelay2,
+        CombDelay3,
+        CombDelay4,
+        AllpassGain1,
+        AllpassDelay1,
+        AllpassGain2,
+        AllpassDelay2,
+        LowpassCutoff,
+        NumParams
+    };*/
+    bool NeedsUIUpdate(){return UIUpdateFlag;};
+    void ClearUIUpdateFlag(){UIUpdateFlag = false;};
+    void RaiseUIUpdateFlag(){UIUpdateFlag = true;};
+    WDL_FFT_COMPLEX * UIAnalysisCache;
+    
 private:
+    //Private Data, helper methods, etc
+    int blockSize;
+    float * monoBuffer;
+    float scaleFactor;
+    Analysis * analyses;
+    bool UIUpdateFlag;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SmodelsAudioProcessor)
 };

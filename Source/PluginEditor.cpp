@@ -22,7 +22,6 @@
 
 #include "PluginEditor.h"
 
-
 //[MiscUserDefs] You can add your own user definitions and misc code here...
 //[/MiscUserDefs]
 
@@ -41,7 +40,9 @@ SmodelsAudioProcessorEditor::SmodelsAudioProcessorEditor (SmodelsAudioProcessor*
 
 
     //[Constructor] You can add your own custom stuff here..
+    SmodelsAudioProcessor* ourProcessor = getProcessor();
     startTimer(200);
+    graphResolution = 4 * ourProcessor->getBlockSize();
     //[/Constructor]
 }
 
@@ -69,22 +70,23 @@ void SmodelsAudioProcessorEditor::paint (Graphics& g)
     g.fillRect (456, 24, 544, 288);
 
     //[UserPaint] Add your own custom painting code here..
+    SmodelsAudioProcessor* ourProcessor = getProcessor();
     g.setColour(Colour(255, 0, 0));
-    int i=0, graphRes = getGraphResolution();
+    
+    int i=0, numBins = ourProcessor->getAnalysisSize(NYQUIST), graphRes = getGraphResolution();
     float graphLeft = (float)graph->getPosition().getX(), graphWidth = (float)graph->getWidth(),
         graphTop = (float)graph->getPosition().getY(), graphHeight = (float)graph->getHeight(),
-        rectWidth = graphWidth / graphRes, topOfBar, mag;
-    for(; i<graphRes; ++i){
-        mag = ((float)i / graphRes);
+        rectWidth = graphWidth / graphRes, topOfBar, mag, xPercent;
+    for(; i<numBins; ++i){
+        xPercent = (float)i/numBins;
+        mag = ourProcessor->UIAnalysisCache[i].re;//((float)i / graphRes);
+        if(mag > 1.0f){
+            std::cout << "bin mag is not normalized" << std::endl;
+        }
         topOfBar = graphTop + (graphHeight - (graphHeight * mag));
-        //graphOrigin.getX()+(i * rectWidth), graphOrigin.getY(), rectWidth, graphHeight * (float)graphWidth / i
-        g.drawRect(graphLeft+(i * rectWidth), topOfBar, rectWidth, mag * graphHeight);
-        
-        //(float)graph->getPosition().getY() + graphHeight * ((float)i / graphRes)
+        //for testing, just drawing a diagonal line for the spectrum, but replacing mag value with that of bin mag should work (mags must be normalized 0-1)
+        g.drawRect(graphLeft+(xPercent * rectWidth), topOfBar, rectWidth, mag * graphHeight);//to just draw points, last arg should just be mag
     }
-        //    }
-    /*  WDL_COMPLEX * mags = AudioProcessor.mags
-    g.drawVerticalLine(window_origin_x+i, mags[i], float(window_origin_y))*/
     //[/UserPaint]
 }
 
@@ -99,7 +101,26 @@ void SmodelsAudioProcessorEditor::resized()
 
 //[MiscUserCode] You can add your own definitions of your custom methods or any other code here...
 void SmodelsAudioProcessorEditor::timerCallback(){
-    SmodelsAudioProcessor* ourProcessor = getProcessor();
+    //SmodelsAudioProcessor* ourProcessor = getProcessor();
+    /*
+     //exchange any data you want between UI elements and the plugin "ourProcessor"
+     if(ourProcessor->NeedsUIUpdate()){
+     BypassButton->setToggleState(1.0f == ourProcessor->getParameter(XVerbAudioProcessor::MasterBypass), false);
+     MixKnob->setValue(ourProcessor->getParameter(XVerbAudioProcessor::Mix), juce::dontSendNotification);
+     DecayKnob->setValue(ourProcessor->getParameter(XVerbAudioProcessor::Mix), juce::dontSendNotification);
+     CombDelayKnob1->setValue(ourProcessor->getParameter(XVerbAudioProcessor::CombDelay1), juce::dontSendNotification);
+     CombDelayKnob2->setValue(ourProcessor->getParameter(XVerbAudioProcessor::CombDelay2), juce::dontSendNotification);
+     CombDelayKnob3->setValue(ourProcessor->getParameter(XVerbAudioProcessor::CombDelay3), juce::dontSendNotification);
+     CombDelayKnob4->setValue(ourProcessor->getParameter(XVerbAudioProcessor::CombDelay4), juce::dontSendNotification);
+     AllpassDelayKnob1->setValue(ourProcessor->getParameter(XVerbAudioProcessor::AllpassDelay1), juce::dontSendNotification);
+     AllpassGainKnob1->setValue(ourProcessor->getParameter(XVerbAudioProcessor::AllpassGain1), juce::dontSendNotification);
+     AllpassDelayKnob2->setValue(ourProcessor->getParameter(XVerbAudioProcessor::AllpassDelay2), juce::dontSendNotification);
+     AllpassGainKnob2->setValue(ourProcessor->getParameter(XVerbAudioProcessor::AllpassGain2), juce::dontSendNotification);
+     LowpassCutoffKnob->setValue(ourProcessor->getParameter(XVerbAudioProcessor::LowpassCutoff), juce::dontSendNotification);
+     ourProcessor->ClearUIUpdateFlag();
+     //std::cout << "UIUpdated" << std::endl;
+     }
+     */
 }
 //[/MiscUserCode]
 

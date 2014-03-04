@@ -15,10 +15,23 @@
 //==============================================================================
 SmodelsAudioProcessor::SmodelsAudioProcessor()
 {
+    //UIUpdateFlag = true;
+    int numChannels = getNumInputChannels();
+    int windowSize = 2048;
+    analyses = new Analysis[numChannels];
+    /*for(int i = 0; i < numChannels; ++i){
+        analyses[i].init();
+        analyses[i].resize(*/
+                           //    scaleFactor = 1.0f / getNumInputChannels();
+
+                           //UIAnalysisCacheX = new float[analysis.getNumBins()];
+                           //    UIAnalysisCacheY = new float[analysis.getNumBins()];
 }
 
 SmodelsAudioProcessor::~SmodelsAudioProcessor()
 {
+    //    delete[] UIAnalysisCacheX;
+    //    delete[] UIAnalysisCacheY;
 }
 
 //==============================================================================
@@ -142,19 +155,33 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
     std::cout << "Block size: " << blockSize << std::endl;
     // This is the place where you'd normally do the guts of your plugin's
     // audio processing...
-    for (int channel = 0; channel < getNumInputChannels(); ++channel)
-    {
+    
+    
+    int numChannels = buffer.getNumChannels(), numSamples = buffer.getNumSamples(), channel = 0, sample = 0;
+    int callbackSize = getBlockSize();
+    std::cout << "Callback size: " << callbackSize << std::endl;
+    //TODO: instead of monoBuffering, maybe I should try one of those stereo optimizations (treat the two channels as one complex number and take the complex fft, for example)
+    for (; channel < numChannels; ++channel){
         float* channelData = buffer.getSampleData (channel);
-
-        // ..do something to the data...
+        for (; sample < numSamples; ++sample){
+            monoBuffer[sample] += channelData[sample];
+        }
     }
-
+    /*for (sample = 0; sample < numSamples; ++sample){
+        analysis.setComplex(sample, monoBuffer[sample] * scaleFactor);
+    }
+    analysis.advanceChunk();
+    if(analysis.isReady(FFT)){
+        analysis.transform(FFT); //should only execute every 4 iterations of the audio callback
+        analysis.exportComplex(UIAnalysisCache, NYQUIST); //save the most recent data here so it's available to the UI 
+    }*/
+    
     // In case we have more outputs than inputs, we'll clear any output
     // channels that didn't contain input data, (because these aren't
     // guaranteed to be empty - they may contain garbage).
     for (int i = getNumInputChannels(); i < getNumOutputChannels(); ++i)
     {
-        buffer.clear (i, 0, buffer.getNumSamples());
+        buffer.clear(i, 0, buffer.getNumSamples());
     }
 }
 
@@ -181,6 +208,34 @@ void SmodelsAudioProcessor::setStateInformation (const void* data, int sizeInByt
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+}
+
+int SmodelsAudioProcessor::getAnalysisSize(const int range) const{
+    switch(range){
+        case NYQUIST:
+            //return analysis.getNumFrequencies();
+            break;
+        case ALL:
+            //return analysis.getWindowSize() + 1;
+            break;
+        default:
+            std::cout << "getAnalysisSize switch fell through" << std::endl;
+            return 0;
+    }
+}
+
+float SmodelsAudioProcessor::getAnalysisValue(const int index, const int dim) const{
+    switch(dim){
+        case REAL://Real
+            //return analysis.getReal(index);
+        case IMAG:
+            //return analysis.getImag(index);
+        case FRQ:
+            //return analysis.getFreq(index);
+        default:
+            std::cout << "getAnalysisValue switch fell through" << std::endl;
+            return 0.0f;
+    }
 }
 
 //==============================================================================
