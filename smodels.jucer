@@ -10,6 +10,10 @@
               pluginRTASCategory="" aaxIdentifier="com.yourcompany.smodels"
               pluginAAXCategory="AAX_ePlugInCategory_Dynamics" jucerVersion="3.1.0">
   <MAINGROUP id="gH0J4m" name="smodels">
+    <GROUP id="{87F969FE-43BD-B9E7-E72A-96C11D3A0C6B}" name="Utility">
+      <FILE id="yDJmjF" name="RingBuffer.cpp" compile="1" resource="0" file="Source/RingBuffer.cpp"/>
+      <FILE id="UnDWA5" name="RingBuffer.h" compile="0" resource="0" file="Source/RingBuffer.h"/>
+    </GROUP>
     <GROUP id="{61D434F1-47FD-43DD-6164-89A2DF93AD9C}" name="WDL">
       <FILE id="sKvSbZ" name="fft.c" compile="1" resource="0" file="../../WDL/fft.c"/>
       <FILE id="Qdq86r" name="fft.h" compile="0" resource="0" file="../../WDL/fft.h"/>

@@ -75,6 +75,15 @@ float Analysis::getFrq(const int index) const{
 }
 
 //setters
+void setComplex(const int index, const float realVal, const float imagVal = 0.0f){
+    try{
+        complexBuffer[index].re = realVal;
+        complexBuffer[index].im = imagVal;
+    }
+    catch(std::exception){
+        std::cout << "Attempting to set out of range complex number index." << std::endl;
+    }
+}
 void Analysis::set(const int index, const PARAMETER p, const float val){
     switch(p){
         case REAL:

@@ -18,6 +18,7 @@
 #include <iostream>
 #include "fft.h"
 
+#define WINDOW_SIZE 1024
 
 //////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////
@@ -49,33 +50,40 @@ private:
     int sr, windowSize, hopSize, numBins, writePos, readPos, state;
     uint numFrames;
     WDL_FFT_COMPLEX * complexBuffer;
-    float * ringBuffer;
-    float * signalBuffer;
+    float * inputBuffer;
+    float * outputBuffer;
     float * magnitudes;
     float * phases;
     float * frequencies;
 public:
     Analysis(){
-        signalBuffer = new float[0];
+        inputBuffer = new float[0];
+        outputBuffer = new float[0];
         complexBuffer = new WDL_FFT_COMPLEX[0];
         magnitudes = new float[0];
         phases = new float[0];
         frequencies = new float[0];
     }
     ~Analysis(){
-        delete[] signalBuffer;
+        delete[] inputBuffer;
+        delete[] outputBuffer;
         delete[] complexBuffer;
         delete[] magnitudes;
         delete[] phases;
         delete[] frequencies;
     }
-    void resize(const int wSize = 2048, const int sRate = 44100){
+    void resize(const int wSize = 1024, const int sRate = 44100){
         sr = sRate;
         writePos = 0;
         readPos = 0;
         windowSize = wSize;
         hopSize = wSize / 4;
         numBins = windowSize/2 + 1;
+        
+        delete[] inputBuffer;
+        inputBuffer = new float[windowSize];        
+        delete[] outputBuffer;
+        outputBuffer = new float[windowSize];
         delete[] complexBuffer;
         complexBuffer = new WDL_FFT_COMPLEX[windowSize];
         delete[] magnitudes;
@@ -113,15 +121,7 @@ public:
     float getFrq(const int index) const;
 
     //setters
-    void setComplex(const int index, const float realVal, const float imagVal = 0.0f){
-        try{
-            complexBuffer[index].re = realVal;
-            complexBuffer[index].im = imagVal;
-        }
-        catch(std::exception){
-            std::cout << "Attempting to set out of range complex number index." << std::endl;
-        }
-    }
+    void setComplex(const int index, const float realVal, const float imagVal = 0.0f);
     void set(const int index, const PARAMETER p, const float val = 0.0f);
     void setReal(const int index, const float val = 0.0f);
     void setImag(const int index, const float val = 0.0f);
