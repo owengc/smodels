@@ -67,8 +67,7 @@ public:
     void setStateInformation (const void* data, int sizeInBytes);
 
     //Custom Methods, Params, and Public Data
-    int getAnalysisSize(const int range) const;
-    float getAnalysisValue(const int index, const int dim) const;
+    int getAnalysisSize(const int channel) const;
     /*enum Parameters{
         MasterBypass = 0,
         Mix,
@@ -87,8 +86,7 @@ public:
     bool NeedsUIUpdate(){return UIUpdateFlag;};
     void ClearUIUpdateFlag(){UIUpdateFlag = false;};
     void RaiseUIUpdateFlag(){UIUpdateFlag = true;};
-    WDL_FFT_COMPLEX * UIAnalysisCache;
-    
+    float ** UIAnalysisCache;
 private:
     //Private Data, helper methods, etc
     int blockSize;

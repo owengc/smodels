@@ -16,22 +16,24 @@
 SmodelsAudioProcessor::SmodelsAudioProcessor()
 {
     //UIUpdateFlag = true;
+    int sr = getSampleRate();
     int numChannels = getNumInputChannels();
-    int windowSize = 2048;
+    int windowSize = 1024;
     analyses = new Analysis[numChannels];
-    /*for(int i = 0; i < numChannels; ++i){
+    UIAnalysisCache = new float * [numChannels * 2]; //probs a better way to do this
+    for(int i = 0; i < numChannels; ++i){
         analyses[i].init();
-        analyses[i].resize(*/
-                           //    scaleFactor = 1.0f / getNumInputChannels();
-
-                           //UIAnalysisCacheX = new float[analysis.getNumBins()];
-                           //    UIAnalysisCacheY = new float[analysis.getNumBins()];
+        analyses[i].resize(windowSize, sr);
+        UIAnalysisCache[2 * i] = &analyses[i].getFrequencies();
+        UIAnalysisCache[2 * i + 1] = &analyses[i].getMagnitudes();
+    }
 }
+    
 
 SmodelsAudioProcessor::~SmodelsAudioProcessor()
 {
-    //    delete[] UIAnalysisCacheX;
-    //    delete[] UIAnalysisCacheY;
+    delete[] analyses;
+    delete[] UIAnalysisCache;
 }
 
 //==============================================================================
@@ -158,24 +160,20 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
     
     
     int numChannels = buffer.getNumChannels(), numSamples = buffer.getNumSamples(), channel = 0, sample = 0;
-    int callbackSize = getBlockSize();
+    int callbackSize = getBlockSize(), frameCount = 0, timer = 0;
     std::cout << "Callback size: " << callbackSize << std::endl;
     //TODO: instead of monoBuffering, maybe I should try one of those stereo optimizations (treat the two channels as one complex number and take the complex fft, for example)
-    for (; channel < numChannels; ++channel){
-        float* channelData = buffer.getSampleData (channel);
+    for (; channel < 1/*numChannels*/; ++channel){
+        float* channelData = buffer.getSampleData(channel);
         for (; sample < numSamples; ++sample){
-            monoBuffer[sample] += channelData[sample];
+            if(analyses[channel](channelData[sample])){
+                //take an fft now!
+                std::cout << "fft frame " << frameCount << " ready (" << timer << ")" << std::endl;
+                timer = 0;
+            }
+            timer++;
         }
     }
-    /*for (sample = 0; sample < numSamples; ++sample){
-        analysis.setComplex(sample, monoBuffer[sample] * scaleFactor);
-    }
-    analysis.advanceChunk();
-    if(analysis.isReady(FFT)){
-        analysis.transform(FFT); //should only execute every 4 iterations of the audio callback
-        analysis.exportComplex(UIAnalysisCache, NYQUIST); //save the most recent data here so it's available to the UI 
-    }*/
-    
     // In case we have more outputs than inputs, we'll clear any output
     // channels that didn't contain input data, (because these aren't
     // guaranteed to be empty - they may contain garbage).
@@ -210,32 +208,8 @@ void SmodelsAudioProcessor::setStateInformation (const void* data, int sizeInByt
     // whose contents will have been created by the getStateInformation() call.
 }
 
-int SmodelsAudioProcessor::getAnalysisSize(const int range) const{
-    switch(range){
-        case NYQUIST:
-            //return analysis.getNumFrequencies();
-            break;
-        case ALL:
-            //return analysis.getWindowSize() + 1;
-            break;
-        default:
-            std::cout << "getAnalysisSize switch fell through" << std::endl;
-            return 0;
-    }
-}
-
-float SmodelsAudioProcessor::getAnalysisValue(const int index, const int dim) const{
-    switch(dim){
-        case REAL://Real
-            //return analysis.getReal(index);
-        case IMAG:
-            //return analysis.getImag(index);
-        case FRQ:
-            //return analysis.getFreq(index);
-        default:
-            std::cout << "getAnalysisValue switch fell through" << std::endl;
-            return 0.0f;
-    }
+int SmodelsAudioProcessor::getAnalysisSize(const int channel) const{
+    return analyses[channel].getWindowSize() / 2 + 1;
 }
 
 //==============================================================================

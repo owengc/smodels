@@ -14,13 +14,14 @@
 template <class T>
 class RingBuffer {
 private:
-    int size, readPos, writePos;
+    int size, readPos, writePos, numWrittenSinceRead;
     T * data;
 public:
-    RingBuffer();
+    RingBuffer(const int s = 0);
     ~RingBuffer();
     T read() const;
     void write(const T x);
+    int getNumWrittenSinceRead() const;
 };
 
 

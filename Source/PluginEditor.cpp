@@ -71,21 +71,30 @@ void SmodelsAudioProcessorEditor::paint (Graphics& g)
 
     //[UserPaint] Add your own custom painting code here..
     SmodelsAudioProcessor* ourProcessor = getProcessor();
-    g.setColour(Colour(255, 0, 0));
-    
-    int i=0, numBins = ourProcessor->getAnalysisSize(NYQUIST), graphRes = getGraphResolution();
+
+    int numChannels = ourProcessor->getNumInputChannels(), graphRes = getGraphResolution(), channel = 0, i;
+    int numBins = ourProcessor->getAnalysisSize(numChannels);
     float graphLeft = (float)graph->getPosition().getX(), graphWidth = (float)graph->getWidth(),
-        graphTop = (float)graph->getPosition().getY(), graphHeight = (float)graph->getHeight(),
-        rectWidth = graphWidth / graphRes, topOfBar, mag, xPercent;
-    for(; i<numBins; ++i){
-        xPercent = (float)i/numBins;
-        mag = ourProcessor->UIAnalysisCache[i].re;//((float)i / graphRes);
-        if(mag > 1.0f){
-            std::cout << "bin mag is not normalized" << std::endl;
+    graphTop = (float)graph->getPosition().getY(), graphHeight = (float)graph->getHeight(),
+    rectWidth = graphWidth / graphRes, topOfBar, xPercent;
+    float * mag;
+    for(; channel < numChannels; ++channel){
+        if(channel == 0){
+            g.setColour(Colour(255, 0, 0));
         }
-        topOfBar = graphTop + (graphHeight - (graphHeight * mag));
-        //for testing, just drawing a diagonal line for the spectrum, but replacing mag value with that of bin mag should work (mags must be normalized 0-1)
-        g.drawRect(graphLeft+(xPercent * rectWidth), topOfBar, rectWidth, mag * graphHeight);//to just draw points, last arg should just be mag
+        else{
+            g.setColour(Colour(0, 0, 255));
+        }
+        for(i = 0; i < numBins; ++i){
+            xPercent = (float)i/numBins;
+            mag = ourProcessor->UIAnalysisCache[2 * channel];
+            if(mag[i] > 1.0f){
+                std::cout << "bin mag is not normalized" << std::endl;
+            }
+            topOfBar = graphTop + (graphHeight - (graphHeight * mag[i]));
+            //for testing, just drawing a diagonal line for the spectrum, but replacing mag value with that of bin mag should work (mags must be normalized 0-1)
+            g.drawRect(graphLeft+(xPercent * rectWidth), topOfBar, rectWidth, mag[i] * graphHeight);//to just draw points, last arg should just be mag
+        }
     }
     //[/UserPaint]
 }
