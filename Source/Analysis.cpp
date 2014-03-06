@@ -9,18 +9,21 @@
 */
 
 #include "Analysis.h"
-Analysis::Analysis(){
+Analysis::Analysis(const WINDOW w){
+    windowType = w;
     inputBuffer = new RingBuffer<float>(0);
     outputBuffer = new RingBuffer<float>(0);
     complexBuffer = new WDL_FFT_COMPLEX[0];
+    window = new float[0];
     magnitudes = new float[0];
     phases = new float[0];
     frequencies = new float[0];
 }
 Analysis::~Analysis(){
-    //delete inputBuffer;
-    //delete outputBuffer;
+    delete inputBuffer;
+    delete outputBuffer;
     delete[] complexBuffer;
+    delete[] window;
     delete[] magnitudes;
     delete[] phases;
     delete[] frequencies;
@@ -91,6 +94,20 @@ float Analysis::getFrq(const int index) const{
 }
 
 //setters
+void Analysis::setWindow(const WINDOW w){//might support more options later
+    for(int i = 0; i < windowSize; ++i){
+        switch(w){
+            case WINDOW::HANN:
+                window[i] = 0.5 * (1 - cos(2 * M_PI * i / windowSize));
+                break;
+            default:
+                std::cout << "invalid window type. defaulting to rectangle" << std::endl;
+                window[i] = 1.0;
+                break;
+        }
+    }
+}
+
 void Analysis::setComplex(const int index, const float realVal, const float imagVal){
     try{
         complexBuffer[index].re = realVal;
@@ -176,7 +193,7 @@ void Analysis::transform(const TRANSFORM t){
         }
         //fill the complex buffer with new input values
         for(int i = 0; i < windowSize; ++i){
-            setComplex(i, inputBuffer->read());
+            setComplex(i, inputBuffer->read() * window[i]);//apply window function
         }
         WDL_fft(complexBuffer, windowSize, (int)TRANSFORM::FFT);//0 means forward FFT
         state = DATA::SPECTRUM;
@@ -188,15 +205,16 @@ void Analysis::transform(const TRANSFORM t){
 void Analysis::updateSpectrum(){
     assert(state == DATA::SPECTRUM);
     int i = 0;
-    float real, imag;
+    float real, imag, mag;
     for(; i < numBins; ++i){//calc mag, divide by winSize and mult by two
         real = complexBuffer[i].re;
         imag = complexBuffer[i].im;
-        if(sqrt(real * real + imag * imag) > 1.0f){
-            std::cout << "unscaled mag: " << sqrt(real * real + imag * imag) << std::endl;    
+        mag = sqrt(real * real + imag * imag);// / (numBins - 1);
+        if(mag > 1.0f){
+            std::cout << "unscaled mag: " << mag << std::endl;
         }
         //(float)i/numBins;//
-        magnitudes[i] = sqrt(real * real + imag * imag);// / (numBins - 1); //using numBins because numBins == windowSize/2 + 1
+        magnitudes[i] = mag;// / (numBins - 1); //using numBins because numBins == windowSize/2 + 1
         phases[i] = atan2f(imag, real) + M_PI;
     }
 }
@@ -210,20 +228,25 @@ void Analysis::resize(const int wSize, const int sRate){
     numWrittenSinceFFT = 0;
     appetite = windowSize;
     
+    
     delete inputBuffer;
     inputBuffer = new RingBuffer<float>(windowSize);
     delete outputBuffer;
     outputBuffer = new RingBuffer<float>(windowSize);
+    
     delete[] complexBuffer;
     complexBuffer = new WDL_FFT_COMPLEX[windowSize];
+    delete[] window;
+    window = new float[windowSize]{1.0};
     delete[] magnitudes;
-    magnitudes = new float[numBins]{0.5f};
+    magnitudes = new float[numBins]{0.5};
     delete[] phases;
-    phases = new float[numBins]{0.0f};
+    phases = new float[numBins]{0.0};
     delete[] frequencies;
     frequencies = new float[numBins];
     float scaleFactor = (float)sr / windowSize;
     for(int i = 0; i < numBins; ++i){
         frequencies[i] = i * scaleFactor;
     }
+    setWindow(windowType);
 }

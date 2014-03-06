@@ -29,19 +29,22 @@ public:
     enum class TRANSFORM{FFT, IFFT};
     enum class PARAMETER{REAL, IMAG, MAG, PHS, FRQ};
     enum class DATA{WAVEFORM, SPECTRUM};
+    enum class WINDOW{HANN};
 private:
     int sr, windowSize, hopSize, numBins, numWrittenSinceFFT, appetite;
     DATA state;
+    WINDOW windowType;
     RingBuffer<float> * inputBuffer;
     RingBuffer<float> * outputBuffer;
     WDL_FFT_COMPLEX * complexBuffer;
+    float * window;
     float * magnitudes;
     float * phases;
     float * frequencies;
 
 public:
     
-    Analysis();
+    Analysis(const WINDOW w = WINDOW::HANN);
     ~Analysis();
     
     //getters
@@ -58,6 +61,7 @@ public:
     float & getFrequencies() const{return *frequencies;}
 
     //setters
+    void setWindow(const WINDOW w);
     void setComplex(const int index, const float realVal, const float imagVal = 0.0f);
     void set(const int index, const PARAMETER p, const float val = 0.0f);
     void setReal(const int index, const float val = 0.0f);
@@ -65,7 +69,7 @@ public:
     void setMag(const int index, const float val = 0.0f);
     void setPhs(const int index, const float val = 0.0f);
     
-    //business methods
+    //business & utility methods
     bool operator() (const float sample);//use this to write samples to the input buffer
     float operator() (void);//use this to read samples from the output buffer
     void transform(const TRANSFORM t);
