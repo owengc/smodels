@@ -89,7 +89,7 @@ void SmodelsAudioProcessorEditor::paint (Graphics& g)
             barLeft = graphLeft+(i * barWidth);
             mag = &magnitudes[i];
             if(*mag > 0.0f){
-                barHeight = (*mag < 1.0f)?graphHeight * *mag:graphHeight; //clamp bar height to full for clipped magnitudes
+                barHeight = (*mag < 1.0f)?graphHeight * *mag/*10 * log10f(*mag)*/:graphHeight; //clamp bar height to full for clipped magnitudes
                 barTop = graphTop + (graphHeight - barHeight);
                 g.drawRect(barLeft, barTop, barWidth, barHeight);
             }
@@ -109,7 +109,11 @@ void SmodelsAudioProcessorEditor::resized()
 
 //[MiscUserCode] You can add your own definitions of your custom methods or any other code here...
 void SmodelsAudioProcessorEditor::timerCallback(){
-    //SmodelsAudioProcessor* ourProcessor = getProcessor();
+    SmodelsAudioProcessor* ourProcessor = getProcessor();
+    if(ourProcessor->NeedsUIUpdate()){
+        
+        ourProcessor->ClearUIUpdateFlag();
+    }
     /*
      //exchange any data you want between UI elements and the plugin "ourProcessor"
      if(ourProcessor->NeedsUIUpdate()){

@@ -15,7 +15,7 @@
 //==============================================================================
 SmodelsAudioProcessor::SmodelsAudioProcessor()
 {
-    //UIUpdateFlag = true;
+    UIUpdateFlag = true;
     analysisSize = 1024;
     analyses = new Analysis[0];
 }
@@ -168,6 +168,7 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
                 //take an fft now!
                 analyses[channel].transform(Analysis::TRANSFORM::FFT);
                 analyses[channel].transform(Analysis::TRANSFORM::IFFT);
+                UIUpdateFlag = true;
                 //std::cout << "fft frame " << frameCount << " ready (" << timer << ")" << std::endl;
                 //timer = 0;
             }

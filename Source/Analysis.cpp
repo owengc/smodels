@@ -195,7 +195,8 @@ void Analysis::updateSpectrum(){
         if(sqrt(real * real + imag * imag) > 1.0f){
             std::cout << "unscaled mag: " << sqrt(real * real + imag * imag) << std::endl;    
         }
-        magnitudes[i] = (float)i/numBins;//sqrt(real * real + imag * imag);// / (numBins - 1); //using numBins because numBins == windowSize/2 + 1
+        //(float)i/numBins;//
+        magnitudes[i] = sqrt(real * real + imag * imag);// / (numBins - 1); //using numBins because numBins == windowSize/2 + 1
         phases[i] = atan2f(imag, real) + M_PI;
     }
 }
