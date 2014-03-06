@@ -66,7 +66,7 @@ public:
 
 private:
     //[UserVariables]   -- You can add your own custom variables in this section.
-    int graphResolution = 1024;
+    int graphResolution;
     //[/UserVariables]
 
     //==============================================================================

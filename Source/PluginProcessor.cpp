@@ -16,24 +16,14 @@
 SmodelsAudioProcessor::SmodelsAudioProcessor()
 {
     //UIUpdateFlag = true;
-    int sr = getSampleRate();
-    int numChannels = getNumInputChannels();
-    int windowSize = 1024;
-    analyses = new Analysis[numChannels];
-    UIAnalysisCache = new float * [numChannels * 2]; //probs a better way to do this
-    for(int i = 0; i < numChannels; ++i){
-        analyses[i].init();
-        analyses[i].resize(windowSize, sr);
-        UIAnalysisCache[2 * i] = &analyses[i].getFrequencies();
-        UIAnalysisCache[2 * i + 1] = &analyses[i].getMagnitudes();
-    }
+    analysisSize = 1024;
+    analyses = new Analysis[0];
 }
     
 
 SmodelsAudioProcessor::~SmodelsAudioProcessor()
 {
     delete[] analyses;
-    delete[] UIAnalysisCache;
 }
 
 //==============================================================================
@@ -142,6 +132,13 @@ void SmodelsAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
+    int numChannels = getNumInputChannels();
+    delete[] analyses;
+    analyses = new Analysis[numChannels];
+    for(int i = 0; i < numChannels; ++i){
+        analyses[i].init();
+        analyses[i].resize(analysisSize, (float)sampleRate);
+    }
 }
 
 void SmodelsAudioProcessor::releaseResources()
@@ -153,25 +150,28 @@ void SmodelsAudioProcessor::releaseResources()
 void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer& midiMessages)
 {
     
-    int blockSize = getBlockSize();
-    std::cout << "Block size: " << blockSize << std::endl;
     // This is the place where you'd normally do the guts of your plugin's
     // audio processing...
     
     
     int numChannels = buffer.getNumChannels(), numSamples = buffer.getNumSamples(), channel = 0, sample = 0;
-    int callbackSize = getBlockSize(), frameCount = 0, timer = 0;
-    std::cout << "Callback size: " << callbackSize << std::endl;
+    //int callbackSize = getBlockSize(), frameCount = 0, timer = 0;
+    //std::cout << "Callback size: " << callbackSize << std::endl;
     //TODO: instead of monoBuffering, maybe I should try one of those stereo optimizations (treat the two channels as one complex number and take the complex fft, for example)
-    for (; channel < 1/*numChannels*/; ++channel){
-        float* channelData = buffer.getSampleData(channel);
+    for (; channel < numChannels; ++channel){
+        float * channelData = buffer.getSampleData(channel);
         for (; sample < numSamples; ++sample){
+            if(channelData[sample] > 1.0f){
+                std::cout << "samples are not normalized: " << channelData[sample] << std::endl;
+            }
             if(analyses[channel](channelData[sample])){
                 //take an fft now!
-                std::cout << "fft frame " << frameCount << " ready (" << timer << ")" << std::endl;
-                timer = 0;
+                analyses[channel].transform(Analysis::TRANSFORM::FFT);
+                analyses[channel].transform(Analysis::TRANSFORM::IFFT);
+                //std::cout << "fft frame " << frameCount << " ready (" << timer << ")" << std::endl;
+                //timer = 0;
             }
-            timer++;
+            //timer++;
         }
     }
     // In case we have more outputs than inputs, we'll clear any output
@@ -208,9 +208,24 @@ void SmodelsAudioProcessor::setStateInformation (const void* data, int sizeInByt
     // whose contents will have been created by the getStateInformation() call.
 }
 
-int SmodelsAudioProcessor::getAnalysisSize(const int channel) const{
-    return analyses[channel].getWindowSize() / 2 + 1;
+int SmodelsAudioProcessor::getAnalysisSize() const{
+    return analysisSize;
 }
+
+float * SmodelsAudioProcessor::getAnalysisResults(const int channel, const Analysis::PARAMETER p) const{
+    switch (p) {
+        case Analysis::PARAMETER::MAG:
+            return &analyses[channel].getMagnitudes();
+        case Analysis::PARAMETER::PHS:
+            return &analyses[channel].getPhases();
+        case Analysis::PARAMETER::FRQ:
+            return &analyses[channel].getFrequencies();
+        default:
+            std::cout << "Error: attempting to retrieve analysis results with invalid parameter" << std::endl;
+            return nullptr;
+    }
+}
+
 
 //==============================================================================
 // This creates new instances of the plugin..

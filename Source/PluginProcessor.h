@@ -67,7 +67,8 @@ public:
     void setStateInformation (const void* data, int sizeInBytes);
 
     //Custom Methods, Params, and Public Data
-    int getAnalysisSize(const int channel) const;
+    int getAnalysisSize() const;
+    float * getAnalysisResults(const int channel, const Analysis::PARAMETER p) const;
     /*enum Parameters{
         MasterBypass = 0,
         Mix,
@@ -86,12 +87,10 @@ public:
     bool NeedsUIUpdate(){return UIUpdateFlag;};
     void ClearUIUpdateFlag(){UIUpdateFlag = false;};
     void RaiseUIUpdateFlag(){UIUpdateFlag = true;};
-    float ** UIAnalysisCache;
+    
 private:
     //Private Data, helper methods, etc
-    int blockSize;
-    float * monoBuffer;
-    float scaleFactor;
+    int analysisSize;
     Analysis * analyses;
     bool UIUpdateFlag;
     //==============================================================================

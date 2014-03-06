@@ -42,7 +42,7 @@ SmodelsAudioProcessorEditor::SmodelsAudioProcessorEditor (SmodelsAudioProcessor*
     //[Constructor] You can add your own custom stuff here..
     SmodelsAudioProcessor* ourProcessor = getProcessor();
     startTimer(200);
-    graphResolution = 4 * ourProcessor->getBlockSize();
+    graphResolution = ourProcessor->getAnalysisSize() / 2 + 1;
     //[/Constructor]
 }
 
@@ -72,28 +72,27 @@ void SmodelsAudioProcessorEditor::paint (Graphics& g)
     //[UserPaint] Add your own custom painting code here..
     SmodelsAudioProcessor* ourProcessor = getProcessor();
 
-    int numChannels = ourProcessor->getNumInputChannels(), graphRes = getGraphResolution(), channel = 0, i;
-    int numBins = ourProcessor->getAnalysisSize(numChannels);
-    float graphLeft = (float)graph->getPosition().getX(), graphWidth = (float)graph->getWidth(),
-    graphTop = (float)graph->getPosition().getY(), graphHeight = (float)graph->getHeight(),
-    rectWidth = graphWidth / graphRes, topOfBar, xPercent;
-    float * mag;
+    int numChannels = ourProcessor->getNumInputChannels(), channel = 0, i;
+    float graphLeft = graph->getPosition().getX(), graphWidth = graph->getWidth(),
+    graphTop = graph->getPosition().getY(), graphHeight = graph->getHeight(),
+    barWidth = graphWidth / graphResolution, barLeft, barTop, barHeight;
+    float * magnitudes, * mag;
     for(; channel < numChannels; ++channel){
+        magnitudes = ourProcessor->getAnalysisResults(channel, Analysis::PARAMETER::MAG);
         if(channel == 0){
             g.setColour(Colour(255, 0, 0));
         }
         else{
             g.setColour(Colour(0, 0, 255));
         }
-        for(i = 0; i < numBins; ++i){
-            xPercent = (float)i/numBins;
-            mag = ourProcessor->UIAnalysisCache[2 * channel];
-            if(mag[i] > 1.0f){
-                std::cout << "bin mag is not normalized" << std::endl;
+        for(i = 0; i < graphResolution; ++i){
+            barLeft = graphLeft+(i * barWidth);
+            mag = &magnitudes[i];
+            if(*mag > 0.0f){
+                barHeight = (*mag < 1.0f)?graphHeight * *mag:graphHeight; //clamp bar height to full for clipped magnitudes
+                barTop = graphTop + (graphHeight - barHeight);
+                g.drawRect(barLeft, barTop, barWidth, barHeight);
             }
-            topOfBar = graphTop + (graphHeight - (graphHeight * mag[i]));
-            //for testing, just drawing a diagonal line for the spectrum, but replacing mag value with that of bin mag should work (mags must be normalized 0-1)
-            g.drawRect(graphLeft+(xPercent * rectWidth), topOfBar, rectWidth, mag[i] * graphHeight);//to just draw points, last arg should just be mag
         }
     }
     //[/UserPaint]

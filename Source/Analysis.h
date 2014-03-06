@@ -24,25 +24,14 @@
 //  Analysis Class (performs FFT using WDL wrapper for djbfft)
 //////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////
-enum TRANSFORM{
-    FFT = 0,
-    IFFT
-};
-enum PARAMETER{
-    REAL = 0,
-    IMAG,
-    MAG,
-    PHS,
-    FRQ
-};
-enum DATA{
-    WAVEFORM = 0,
-    SPECTRUM
-};
-
 class Analysis{
+public:
+    enum class TRANSFORM{FFT, IFFT};
+    enum class PARAMETER{REAL, IMAG, MAG, PHS, FRQ};
+    enum class DATA{WAVEFORM, SPECTRUM};
 private:
-    int sr, windowSize, hopSize, numBins, state, appetite;
+    int sr, windowSize, hopSize, numBins, numWrittenSinceFFT, appetite;
+    DATA state;
     RingBuffer<float> * inputBuffer;
     RingBuffer<float> * outputBuffer;
     WDL_FFT_COMPLEX * complexBuffer;
@@ -51,13 +40,13 @@ private:
     float * frequencies;
 
 public:
+    
     Analysis();
     ~Analysis();
     
     //getters
     int getWindowSize() const{return windowSize;}
     int getNumBins() const{return numBins;}
-    int getState() const{return state;}
     float get(const int index, const PARAMETER p) const;
     float getReal(const int index) const;
     float getImag(const int index) const;
