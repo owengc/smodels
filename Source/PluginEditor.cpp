@@ -22,6 +22,7 @@
 
 #include "PluginEditor.h"
 
+
 //[MiscUserDefs] You can add your own user definitions and misc code here...
 //[/MiscUserDefs]
 
@@ -29,20 +30,19 @@
 SmodelsAudioProcessorEditor::SmodelsAudioProcessorEditor (SmodelsAudioProcessor* ownerFilter)
     : AudioProcessorEditor(ownerFilter)
 {
-    addAndMakeVisible (graph = new Component());
-    graph->setName ("Plot");
-
+    addAndMakeVisible (screen = new Component());
+    screen->setName ("Screen");
 
     //[UserPreSize]
     //[/UserPreSize]
 
     setSize (1024, 512);
 
-
     //[Constructor] You can add your own custom stuff here..
-    SmodelsAudioProcessor* ourProcessor = getProcessor();
+    addAndMakeVisible(spectrogram = new Spectrogram(ownerFilter, screen->getBounds()));
+    spectrogram->setName("Spectrogram");
+    spectrogram->toFront(false);
     startTimer(200);
-    graphResolution = ourProcessor->getAnalysisSize() / 2 + 1;
     //[/Constructor]
 }
 
@@ -51,7 +51,7 @@ SmodelsAudioProcessorEditor::~SmodelsAudioProcessorEditor()
     //[Destructor_pre]. You can add your own custom destruction code here..
     //[/Destructor_pre]
 
-    graph = nullptr;
+    screen = nullptr;
 
 
     //[Destructor]. You can add your own custom destruction code here..
@@ -63,44 +63,19 @@ void SmodelsAudioProcessorEditor::paint (Graphics& g)
 {
     //[UserPrePaint] Add your own custom painting code here..
     //[/UserPrePaint]
-
+    //std::cout << "attempting to paint UI" << std::endl;
     g.fillAll (Colour (0xff3f474e));
 
     g.setColour (Colours::grey);
     g.fillRect (456, 24, 544, 288);
 
     //[UserPaint] Add your own custom painting code here..
-    SmodelsAudioProcessor* ourProcessor = getProcessor();
-
-    int numChannels = ourProcessor->getNumInputChannels(), channel = 0, i;
-    float graphLeft = graph->getPosition().getX(), graphWidth = graph->getWidth(),
-    graphTop = graph->getPosition().getY(), graphHeight = graph->getHeight(),
-    barWidth = graphWidth / graphResolution, barLeft, barTop, barHeight;
-    float * magnitudes, * mag;
-    for(; channel < numChannels; ++channel){
-        magnitudes = ourProcessor->getAnalysisResults(channel, Analysis::PARAMETER::MAG);
-        if(channel == 0){
-            g.setColour(Colour(255, 0, 0));
-        }
-        else{
-            g.setColour(Colour(0, 0, 255));
-        }
-        for(i = 0; i < graphResolution; ++i){
-            barLeft = graphLeft+(i * barWidth);
-            mag = &magnitudes[i];
-            if(*mag > 0.0f){
-                barHeight = (*mag < 1.0f)?graphHeight * *mag/*10 * log10f(*mag)*/:graphHeight; //clamp bar height to full for clipped magnitudes
-                barTop = graphTop + (graphHeight - barHeight);
-                g.drawRect(barLeft, barTop, barWidth, barHeight);
-            }
-        }
-    }
     //[/UserPaint]
 }
 
 void SmodelsAudioProcessorEditor::resized()
 {
-    graph->setBounds (proportionOfWidth (0.4609f), proportionOfHeight (0.0781f), proportionOfWidth (0.4971f), proportionOfHeight (0.5020f));
+    screen->setBounds (proportionOfWidth (0.4609f), proportionOfHeight (0.0781f), proportionOfWidth (0.4971f), proportionOfHeight (0.5020f));
     //[UserResized] Add your own custom resize handling here..
     //[/UserResized]
 }
@@ -109,9 +84,9 @@ void SmodelsAudioProcessorEditor::resized()
 
 //[MiscUserCode] You can add your own definitions of your custom methods or any other code here...
 void SmodelsAudioProcessorEditor::timerCallback(){
+    //std::cout << "UI timer called" << std::endl;
     SmodelsAudioProcessor* ourProcessor = getProcessor();
     if(ourProcessor->NeedsUIUpdate()){
-        
         ourProcessor->ClearUIUpdateFlag();
     }
     /*
@@ -154,7 +129,7 @@ BEGIN_JUCER_METADATA
   <BACKGROUND backgroundColour="ff3f474e">
     <RECT pos="456 24 544 288" fill="solid: ff808080" hasStroke="0"/>
   </BACKGROUND>
-  <GENERICCOMPONENT name="Plot" id="33568b08c10d6ccd" memberName="graph" virtualName=""
+  <GENERICCOMPONENT name="Screen" id="33568b08c10d6ccd" memberName="screen" virtualName=""
                     explicitFocusOrder="0" pos="46.094% 7.812% 49.707% 50.195%" class="Component"
                     params=""/>
 </JUCER_COMPONENT>

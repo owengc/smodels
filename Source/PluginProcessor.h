@@ -87,12 +87,16 @@ public:
     bool NeedsUIUpdate(){return UIUpdateFlag;};
     void ClearUIUpdateFlag(){UIUpdateFlag = false;};
     void RaiseUIUpdateFlag(){UIUpdateFlag = true;};
+    bool NeedsSpectrogramUpdate(){return SpectrogramUpdateFlag;};
+    void ClearSpectrogramUpdateFlag(){SpectrogramUpdateFlag = false;};
+    void RaiseSpectrogramUpdateFlag(){SpectrogramUpdateFlag = true;};
     
 private:
     //Private Data, helper methods, etc
     int analysisSize;
     Analysis * analyses;
     bool UIUpdateFlag;
+    bool SpectrogramUpdateFlag;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SmodelsAudioProcessor)
 };

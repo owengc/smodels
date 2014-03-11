@@ -166,6 +166,7 @@ void Analysis::setPhs(const int index, const float val){
 
 //business methods
 bool Analysis::operator() (const float sample){//use this to write samples to the input buffer
+    
     inputBuffer->write(sample);//assuming normalized input
     numWrittenSinceFFT++;
     //return true once we've gotten enough new samples to take another FFT
@@ -204,15 +205,16 @@ void Analysis::transform(const TRANSFORM t){
 
 void Analysis::updateSpectrum(){
     assert(state == DATA::SPECTRUM);
-    int i = 0;
+    int i = 1; //ignoring dc & nyquist
     float real, imag, mag;
-    for(; i < numBins; ++i){//calc mag, divide by winSize and mult by two
-        real = complexBuffer[i].re;
-        imag = complexBuffer[i].im;
-        mag = sqrt(real * real + imag * imag);// / (numBins - 1);
-        if(mag > 1.0f){
-            std::cout << "unscaled mag: " << mag << std::endl;
-        }
+    for(; i < numBins; ++i){//before calculating magnitude, divide by windowSize and multiply by two
+        real = complexBuffer[i].re / (numBins - 1);
+        imag = complexBuffer[i].im / (numBins - 1);
+        mag = sqrt(real * real + imag * imag);
+        //if(mag > 0.1f)
+        //{
+        //    std::cout << "unscaled mag: " << mag << std::endl;
+        //}
         //(float)i/numBins;//
         magnitudes[i] = mag;// / (numBins - 1); //using numBins because numBins == windowSize/2 + 1
         phases[i] = atan2f(imag, real) + M_PI;
@@ -223,8 +225,8 @@ void Analysis::resize(const int wSize, const int sRate){
     state = DATA::WAVEFORM;
     sr = sRate;
     windowSize = wSize;
-    hopSize = wSize / 4;
-    numBins = windowSize/2 + 1;
+    hopSize = windowSize / 2;
+    numBins = windowSize / 2 + 1;
     numWrittenSinceFFT = 0;
     appetite = windowSize;
     
@@ -239,7 +241,7 @@ void Analysis::resize(const int wSize, const int sRate){
     delete[] window;
     window = new float[windowSize]{1.0};
     delete[] magnitudes;
-    magnitudes = new float[numBins]{0.5};
+    magnitudes = new float[numBins]{0.0};
     delete[] phases;
     phases = new float[numBins]{0.0};
     delete[] frequencies;

@@ -41,6 +41,7 @@ private:
     float * magnitudes;
     float * phases;
     float * frequencies;
+    float max;
 
 public:
     

@@ -16,8 +16,10 @@
 SmodelsAudioProcessor::SmodelsAudioProcessor()
 {
     UIUpdateFlag = true;
+    SpectrogramUpdateFlag = true;
     analysisSize = 1024;
     analyses = new Analysis[0];
+    std::cout << "processor constructor loc: " << this << std::endl;
 }
     
 
@@ -139,6 +141,7 @@ void SmodelsAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
         analyses[i].init();
         analyses[i].resize(analysisSize, (float)sampleRate);
     }
+    std::cout << "processor prepareToPlay loc: " << this << std::endl;
 }
 
 void SmodelsAudioProcessor::releaseResources()
@@ -154,25 +157,22 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
     // audio processing...
     
     
-    int numChannels = buffer.getNumChannels(), numSamples = buffer.getNumSamples(), channel = 0, sample = 0;
-    //int callbackSize = getBlockSize(), frameCount = 0, timer = 0;
+    int numChannels = buffer.getNumChannels(), numSamples = buffer.getNumSamples(), channel = 0, index = 0;
+    int frameCount = 0;
     //std::cout << "Callback size: " << callbackSize << std::endl;
     //TODO: instead of monoBuffering, maybe I should try one of those stereo optimizations (treat the two channels as one complex number and take the complex fft, for example)
+    float sample;
     for (; channel < numChannels; ++channel){
         float * channelData = buffer.getSampleData(channel);
-        for (; sample < numSamples; ++sample){
-            if(channelData[sample] > 1.0f){
-                std::cout << "samples are not normalized: " << channelData[sample] << std::endl;
-            }
-            if(analyses[channel](channelData[sample])){
+        for (; index < numSamples; ++index){
+            sample = channelData[index];
+            if(analyses[channel](sample)){// < -1.0?-1.0:sample > 1.0?1.0:sample)){//write clamped values to analysis buffer
                 //take an fft now!
                 analyses[channel].transform(Analysis::TRANSFORM::FFT);
+                
                 analyses[channel].transform(Analysis::TRANSFORM::IFFT);
-                UIUpdateFlag = true;
-                //std::cout << "fft frame " << frameCount << " ready (" << timer << ")" << std::endl;
-                //timer = 0;
+                SpectrogramUpdateFlag = true;
             }
-            //timer++;
         }
     }
     // In case we have more outputs than inputs, we'll clear any output
