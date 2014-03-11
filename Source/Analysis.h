@@ -16,7 +16,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
-#include "fft.h"
+#include "fftw3.h"
 #include "RingBuffer.h"
 
 //////////////////////////////////////////////////////////////
@@ -36,7 +36,10 @@ private:
     WINDOW windowType;
     RingBuffer<float> * inputBuffer;
     RingBuffer<float> * outputBuffer;
-    WDL_FFT_COMPLEX * complexBuffer;
+    float * realBuffer;
+    fftwf_complex * complexBuffer;
+    fftwf_plan forwardPlan, backwardPlan;
+    
     float * window;
     float * magnitudes;
     float * phases;
@@ -76,7 +79,6 @@ public:
     void transform(const TRANSFORM t);
     void updateSpectrum();
     void resize(const int wSize = 1024, const int sRate = 44100);
-    void init(){WDL_fft_init();}
 };
 
 #endif  // ANALYSIS_H_INCLUDED

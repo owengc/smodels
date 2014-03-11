@@ -70,44 +70,32 @@ void Spectrogram::paint (Graphics& g)
     bounds = g.getClipBounds();
     //std::cout << "attempting to paint spectrogram" << std::endl;
     int numChannels = ourProcessor->getNumInputChannels(), channel = 0, i;
-    float graphWidth = bounds.getWidth(), graphLeft = 0.0,
-    graphHeight = bounds.getHeight(), graphBottom = bounds.getBottom(), graphTop = 0.0,
-    barWidth = graphWidth / graphResolution, barLeft, barTop, barHeight;
-    float * magnitudes, * mag;
+    float graphWidth = bounds.getWidth(), graphHeight = bounds.getHeight(), graphBottom = bounds.getBottom(),
+    graphTop = 0.0, barWidth = graphWidth / graphResolution, barLeft, barTop = graphHeight, barHeight, alpha = 0.5f,
+    * magnitudes, * mag;
     for(; channel < numChannels; ++channel){
         magnitudes = ourProcessor->getAnalysisResults(channel, Analysis::PARAMETER::MAG);
-        /*if(channel == 0){
-            g.setColour(Colour(255, 0, 0, ));
+        g.beginTransparencyLayer(alpha);
+        if(channel == 0){
+            g.setColour(Colour(0.75, 1.0, 1.0f, 1.0f));
         }
         else{
-            g.setColour(Colour(0, 0, 255));
-        }*/
+            g.setColour(Colour(0.15, 1.0, 1.0f, 1.0f));//yellow
+        }
         for(i = 0; i < graphResolution; ++i){
-            barLeft = /*graphLeft+*/(i * barWidth);
+            barLeft = (i * barWidth);
             mag = &magnitudes[i];
-            if(*mag > 0.01f){
-                //std::cout << "spectro: mag greater than .1: " << *mag<< std::endl;
+            if(*mag > 0.0f){
+                if(channel == 1){
+                    std::cout << "Right: spectro: mag greater than .0: " << *mag<< std::endl;
+                }
                 barHeight = (*mag < 1.0f)?graphHeight * *mag:graphHeight; //clamp bar height to full for clipped magnitudes
                 barTop = graphTop + (graphHeight - barHeight);
-                //                g.drawRect(barLeft, barTop, barWidth, barHeight);
-
-            
-                //    g.drawLine(barLeft, barTop, barLeft, graphBottom, barWidth);
+                //alpha = (*mag > 0.8)?1.0:0.2 + *mag;
+                g.drawVerticalLine(barLeft, barTop, graphBottom);//  drawLine(barLeft, barTop, barLeft, graphBottom, barWidth);
             }
-            float alpha = 1.0;//0.2 + *mag;
-                              //barTop = graphTop;
-            barTop = graphHeight * (float)i/graphResolution;
-            if(i < 200){
-                g.setColour(Colour(0.75, 1.0, 0.5f, alpha));
-            }
-            else if(i >400){
-               g.setColour(Colour(0.15, 1.0, alpha, alpha));//yellow
-            }
-            else{
-                g.setColour(Colour(0.0, 0.0, 0.0f, 0.0f));
-            }
-            g.drawVerticalLine(barLeft, barTop, graphBottom);//  drawLine(barLeft, barTop, barLeft, graphBottom, barWidth);
         }
+        g.endTransparencyLayer();
     }
     //[/UserPaint]
 }

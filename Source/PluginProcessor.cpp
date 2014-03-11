@@ -138,7 +138,6 @@ void SmodelsAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     delete[] analyses;
     analyses = new Analysis[numChannels];
     for(int i = 0; i < numChannels; ++i){
-        analyses[i].init();
         analyses[i].resize(analysisSize, (float)sampleRate);
     }
     std::cout << "processor prepareToPlay loc: " << this << std::endl;
@@ -157,24 +156,27 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
     // audio processing...
     
     
-    int numChannels = buffer.getNumChannels(), numSamples = buffer.getNumSamples(), channel = 0, index = 0;
-    int frameCount = 0;
+    int numChannels = buffer.getNumChannels(), numSamples = buffer.getNumSamples(), channel = 0, index;
     //std::cout << "Callback size: " << callbackSize << std::endl;
     //TODO: instead of monoBuffering, maybe I should try one of those stereo optimizations (treat the two channels as one complex number and take the complex fft, for example)
     float sample;
+    bool update = false;
     for (; channel < numChannels; ++channel){
         float * channelData = buffer.getSampleData(channel);
-        for (; index < numSamples; ++index){
+        for (index = 0; index < numSamples; ++index){
             sample = channelData[index];
             if(analyses[channel](sample)){// < -1.0?-1.0:sample > 1.0?1.0:sample)){//write clamped values to analysis buffer
                 //take an fft now!
                 analyses[channel].transform(Analysis::TRANSFORM::FFT);
-                
                 analyses[channel].transform(Analysis::TRANSFORM::IFFT);
-                SpectrogramUpdateFlag = true;
+                update = true;
+            }
+            else{
+                update = false;
             }
         }
     }
+    SpectrogramUpdateFlag = update?true:false;
     // In case we have more outputs than inputs, we'll clear any output
     // channels that didn't contain input data, (because these aren't
     // guaranteed to be empty - they may contain garbage).
