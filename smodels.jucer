@@ -14,6 +14,7 @@
       <FILE id="xVH4GI" name="fftw3.h" compile="0" resource="0" file="/usr/local/include/fftw3.h"/>
     </GROUP>
     <GROUP id="{87F969FE-43BD-B9E7-E72A-96C11D3A0C6B}" name="Utility">
+      <FILE id="PtA4RL" name="Oscillator.h" compile="0" resource="0" file="Source/Oscillator.h"/>
       <FILE id="UnDWA5" name="RingBuffer.h" compile="0" resource="0" file="Source/RingBuffer.h"/>
     </GROUP>
     <GROUP id="{61D434F1-47FD-43DD-6164-89A2DF93AD9C}" name="WDL">
@@ -21,7 +22,10 @@
       <FILE id="Qdq86r" name="fft.h" compile="0" resource="0" file="../../WDL/fft.h"/>
     </GROUP>
     <GROUP id="{1EA455EA-8216-F2F6-E05F-6C83AE7D9B1C}" name="DSP">
-      <FILE id="PtA4RL" name="Oscillator.h" compile="0" resource="0" file="Source/Oscillator.h"/>
+      <FILE id="apw3IE" name="SinusoidalModel.cpp" compile="1" resource="0"
+            file="Source/SinusoidalModel.cpp"/>
+      <FILE id="rEt37z" name="SinusoidalModel.h" compile="0" resource="0"
+            file="Source/SinusoidalModel.h"/>
       <FILE id="psYyFS" name="Analysis.cpp" compile="1" resource="0" file="Source/Analysis.cpp"/>
       <FILE id="CcUY1m" name="Analysis.h" compile="0" resource="0" file="Source/Analysis.h"/>
     </GROUP>

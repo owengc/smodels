@@ -21,7 +21,7 @@
 
 //////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////
-//  Analysis Class (performs FFT using WDL wrapper for djbfft)
+//  Analysis Class (performs FFT using FFTW3)
 //////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////
 class Analysis{
@@ -31,7 +31,8 @@ public:
     enum class DATA{WAVEFORM, SPECTRUM};
     enum class WINDOW{HANN};
 private:
-    int sr, windowSize, hopSize, numBins, numWrittenSinceFFT, appetite;
+    int samplingRate, windowSize, hopSize, paddedSize, numBins, numWrittenSinceFFT, appetite;
+    bool padded;
     DATA state;
     WINDOW windowType;
     RingBuffer<float> * inputBuffer;
@@ -44,11 +45,9 @@ private:
     float * magnitudes;
     float * phases;
     float * frequencies;
-    float max;
-
 public:
     
-    Analysis(const WINDOW w = WINDOW::HANN);
+    Analysis();
     ~Analysis();
     
     //getters
@@ -63,6 +62,9 @@ public:
     float & getMagnitudes() const{return *magnitudes;}
     float & getPhases() const{return *phases;}
     float & getFrequencies() const{return *frequencies;}
+    float & getMagnitudes() {return *magnitudes;}
+    float & getPhases() {return *phases;}
+    float & getFrequencies() {return *frequencies;}
 
     //setters
     void setWindow(const WINDOW w);
@@ -78,7 +80,7 @@ public:
     float operator() (void);//use this to read samples from the output buffer
     void transform(const TRANSFORM t);
     void updateSpectrum();
-    void resize(const int wSize = 1024, const int sRate = 44100);
+    void init(const WINDOW w = WINDOW::HANN, const int ws = 1024, const int sr = 44100, const bool p = true);
 };
 
 #endif  // ANALYSIS_H_INCLUDED

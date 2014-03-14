@@ -13,6 +13,7 @@
 
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "Analysis.h"
+#include "Oscillator.h"
 
 //==============================================================================
 /**
@@ -94,6 +95,7 @@ public:
 private:
     //Private Data, helper methods, etc
     int analysisSize;
+    bool zeroPadding;
     Analysis * analyses;
     bool UIUpdateFlag;
     bool SpectrogramUpdateFlag;

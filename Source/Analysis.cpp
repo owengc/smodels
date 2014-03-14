@@ -9,8 +9,7 @@
 */
 
 #include "Analysis.h"
-Analysis::Analysis(const WINDOW w){
-    windowType = w;
+Analysis::Analysis(){
     inputBuffer = new RingBuffer<float>(0);
     outputBuffer = new RingBuffer<float>(0);
     window = new float[0];
@@ -203,6 +202,7 @@ void Analysis::transform(const TRANSFORM t){
             appetite = hopSize; //putting this here so it won't have to check very often. might be a better way
         }
         //fill the real buffer with new input values
+        memset(realBuffer, 0, sizeof(float) * paddedSize);
         for(int i = 0; i < windowSize; ++i){
             realBuffer[i] = inputBuffer->read() * window[i];//apply window function
         }
@@ -221,7 +221,9 @@ void Analysis::updateSpectrum(){
     for(; i < numBins; ++i){//before calculating magnitude, divide by windowSize and multiply by two
         real = complexBuffer[i][0] / (numBins - 1);
         imag = complexBuffer[i][1] / (numBins - 1);
+        //mag = 20.0 * log10f(sqrt(real * real + imag * imag));
         mag = sqrt(real * real + imag * imag);
+
         //if(mag > 0.1f)
         //{
         //    std::cout << "unscaled mag: " << mag << std::endl;
@@ -232,12 +234,15 @@ void Analysis::updateSpectrum(){
     }
 }
 
-void Analysis::resize(const int wSize, const int sRate){
+void Analysis::init(const WINDOW w, const int ws, const int sr, const bool p){
     state = DATA::WAVEFORM;
-    sr = sRate;
-    windowSize = wSize;
+    windowType = w;
+    padded = p;
+    samplingRate = sr;
+    windowSize = ws;
     hopSize = windowSize / 2;
-    numBins = windowSize / 2 + 1;
+    paddedSize = (padded)?windowSize * 2:windowSize;//zero padding
+    numBins = paddedSize / 2 + 1;
     numWrittenSinceFFT = 0;
     appetite = windowSize;
     
@@ -254,32 +259,22 @@ void Analysis::resize(const int wSize, const int sRate){
     phases = new float[numBins]{0.0};
     delete[] frequencies;
     frequencies = new float[numBins];
-    float scaleFactor = (float)sr / windowSize;
+    float scaleFactor = (float)samplingRate / paddedSize;
     for(int i = 0; i < numBins; ++i){
         frequencies[i] = i * scaleFactor;
+        //std::cout << "Bin " << i << " frq: " << frequencies[i] << std::endl;
     }
     setWindow(windowType);
     
     //FFTW
     fftwf_free(realBuffer);
-    realBuffer = (float*) fftwf_malloc(sizeof(float) * windowSize);//new float[windowSize]{0.0};
-    memset(realBuffer, 0, sizeof(float) * windowSize);
+    realBuffer = (float*) fftwf_malloc(sizeof(float) * paddedSize);
+    memset(realBuffer, 0, sizeof(float) * paddedSize);
     fftwf_free(complexBuffer);
     complexBuffer = (fftwf_complex*) fftwf_alloc_complex(sizeof(fftwf_complex) * numBins);
     memset(complexBuffer, 0, sizeof(fftwf_complex) * numBins);
     fftwf_destroy_plan(forwardPlan);
-    forwardPlan = fftwf_plan_dft_r2c_1d(windowSize, realBuffer, complexBuffer, FFTW_MEASURE);
+    forwardPlan = fftwf_plan_dft_r2c_1d(paddedSize, realBuffer, complexBuffer, FFTW_MEASURE);
     fftwf_destroy_plan(backwardPlan);
-    backwardPlan = fftwf_plan_dft_c2r_1d(windowSize, complexBuffer, realBuffer, FFTW_MEASURE);
-  /*
-    fftw_complex *in, *out;
-    4 fftw_plan my_plan;
-    5 in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*N);
-    6 out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*N);
-    7 my_plan = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-    8 fftw_execute(my_plan);
-    10 fftw_destroy_plan(my_plan);
-    11 fftw_free(in);
-    12 fftw_free(out);
-*/
+    backwardPlan = fftwf_plan_dft_c2r_1d(paddedSize, complexBuffer, realBuffer, FFTW_MEASURE);
 }

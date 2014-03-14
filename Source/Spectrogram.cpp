@@ -42,7 +42,7 @@ Spectrogram::Spectrogram (SmodelsAudioProcessor* ownerFilter, const Rectangle<in
     graphResolution = ourProcessor->getAnalysisSize() / 2 + 1;
     setBounds(bounds);
     //std::cout << "constructor spectro right bound: " << bounds.getRight() << std::endl;
-    startTimer(20);
+    startTimer(40);
     //std::cout << "spectrogram constructor loc: " << ourProcessor << std::endl;
     //[/Constructor]
 }
@@ -71,10 +71,9 @@ void Spectrogram::paint (Graphics& g)
     //std::cout << "attempting to paint spectrogram" << std::endl;
     int numChannels = ourProcessor->getNumInputChannels(), channel = 0, i;
     float graphWidth = bounds.getWidth(), graphHeight = bounds.getHeight(), graphBottom = bounds.getBottom(),
-    graphTop = 0.0, barWidth = graphWidth / graphResolution, barLeft, barTop = graphHeight, barHeight, alpha = 0.5f,
-    * magnitudes, * mag;
+    graphTop = 0.0, barWidth = graphWidth / graphResolution, barLeft, barTop = graphHeight, barHeight, alpha = 0.5f;
+    const float * magnitudes, * mag;
     for(; channel < numChannels; ++channel){
-        magnitudes = ourProcessor->getAnalysisResults(channel, Analysis::PARAMETER::MAG);
         g.beginTransparencyLayer(alpha);
         if(channel == 0){
             g.setColour(Colour(0.75, 1.0, 1.0f, 1.0f));
@@ -82,17 +81,14 @@ void Spectrogram::paint (Graphics& g)
         else{
             g.setColour(Colour(0.15, 1.0, 1.0f, 1.0f));//yellow
         }
+        magnitudes = ourProcessor->getAnalysisResults(channel, Analysis::PARAMETER::MAG);
         for(i = 0; i < graphResolution; ++i){
             barLeft = (i * barWidth);
             mag = &magnitudes[i];
             if(*mag > 0.0f){
-                if(channel == 1){
-                    std::cout << "Right: spectro: mag greater than .0: " << *mag<< std::endl;
-                }
                 barHeight = (*mag < 1.0f)?graphHeight * *mag:graphHeight; //clamp bar height to full for clipped magnitudes
                 barTop = graphTop + (graphHeight - barHeight);
-                //alpha = (*mag > 0.8)?1.0:0.2 + *mag;
-                g.drawVerticalLine(barLeft, barTop, graphBottom);//  drawLine(barLeft, barTop, barLeft, graphBottom, barWidth);
+                g.drawVerticalLine(barLeft, barTop, graphBottom);
             }
         }
         g.endTransparencyLayer();

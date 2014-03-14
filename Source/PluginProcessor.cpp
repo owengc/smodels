@@ -18,8 +18,9 @@ SmodelsAudioProcessor::SmodelsAudioProcessor()
     UIUpdateFlag = true;
     SpectrogramUpdateFlag = true;
     analysisSize = 1024;
+    zeroPadding = true;
     analyses = new Analysis[0];
-    std::cout << "processor constructor loc: " << this << std::endl;
+    //std::cout << "processor constructor loc: " << this << std::endl;
 }
     
 
@@ -138,9 +139,9 @@ void SmodelsAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     delete[] analyses;
     analyses = new Analysis[numChannels];
     for(int i = 0; i < numChannels; ++i){
-        analyses[i].resize(analysisSize, (float)sampleRate);
+        analyses[i].init(analysisSize, (float)sampleRate, zeroPadding);
     }
-    std::cout << "processor prepareToPlay loc: " << this << std::endl;
+    //std::cout << "processor prepareToPlay loc: " << this << std::endl;
 }
 
 void SmodelsAudioProcessor::releaseResources()
@@ -165,7 +166,7 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
         float * channelData = buffer.getSampleData(channel);
         for (index = 0; index < numSamples; ++index){
             sample = channelData[index];
-            if(analyses[channel](sample)){// < -1.0?-1.0:sample > 1.0?1.0:sample)){//write clamped values to analysis buffer
+            if(analyses[channel](sample)){//write values to analysis buffer
                 //take an fft now!
                 analyses[channel].transform(Analysis::TRANSFORM::FFT);
                 analyses[channel].transform(Analysis::TRANSFORM::IFFT);
@@ -212,7 +213,7 @@ void SmodelsAudioProcessor::setStateInformation (const void* data, int sizeInByt
 }
 
 int SmodelsAudioProcessor::getAnalysisSize() const{
-    return analysisSize;
+    return (zeroPadding)?analysisSize * 2:analysisSize;
 }
 
 float * SmodelsAudioProcessor::getAnalysisResults(const int channel, const Analysis::PARAMETER p) const{
