@@ -14,6 +14,7 @@
       <FILE id="xVH4GI" name="fftw3.h" compile="0" resource="0" file="/usr/local/include/fftw3.h"/>
     </GROUP>
     <GROUP id="{87F969FE-43BD-B9E7-E72A-96C11D3A0C6B}" name="Utility">
+      <FILE id="yNPPQi" name="Noise.h" compile="0" resource="0" file="Source/Noise.h"/>
       <FILE id="PtA4RL" name="Oscillator.h" compile="0" resource="0" file="Source/Oscillator.h"/>
       <FILE id="UnDWA5" name="RingBuffer.h" compile="0" resource="0" file="Source/RingBuffer.h"/>
     </GROUP>

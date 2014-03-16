@@ -14,9 +14,12 @@
 #include <cassert>
 #include <cmath>
 
+template <class T>
+class Oscillator;
 
 template <class T>
 class Wavetable {
+friend class Oscillator<T>;
 public:
     enum class WAVEFORM{SINE};
 private:
@@ -54,10 +57,9 @@ public:
 
 template <class T>
 class Oscillator {
-friend class Wavetable<T>;
 private:
     int readPosA, readPosB;
-    T samplingRate, frequency, phase, increment, fraction;
+    T samplingRate, amplitude, frequency, phase, targetAmplitude, targetFrequency, targetPhase, increment, fraction;
     Wavetable<T> * wavetable;
 public:
     Oscillator(){
@@ -71,12 +73,10 @@ public:
         assert(p >= 0.0 && p <= 1.0);//p = [0.0, 1.0]
         assert(f > 0.0 && f <= sr / 2);//f = [0.0, Nyquist]
         
-        samplingRate = sr;
         wavetable = wt;
-        frequency = f;
+        setFrequency(f, sr);
         phase = p;
-        increment = frequency * wavetable->size / samplingRate;
-    }   
+    }
     
     T next(){
         if(phase > 1.0){
@@ -116,6 +116,10 @@ public:
         samplingRate = sr;
         frequency = f;
         increment = frequency * wavetable->size / samplingRate;
+    }
+    void setAmplitude(const T a){
+        assert(a >= 0.0 && a <= 1.0);
+        amplitude = a;
     }
     void setWavetable(Wavetable<T> &wt){
         wavetable = wt;

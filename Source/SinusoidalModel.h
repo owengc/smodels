@@ -13,8 +13,9 @@
 
 #include "Analysis.h"
 #include "Oscillator.h"
+#include "Noise.h"
 #include <cassert>
-#include <random>
+#include <ctime>
 class Track;
 
 class SinusoidalModel{
@@ -27,7 +28,6 @@ private:
     bool * matches;
     int windowSize, maxTracks, activeTracks, trackBirth, trackDeath;
     float trackMagThreshold, trackFrqThreshold;
-    
 public:
     SinusoidalModel();
     ~SinusoidalModel();
@@ -35,6 +35,7 @@ public:
     float * getAnalysisResults(const Analysis::PARAMETER p) const;
     //setters
     void setWaveform(Wavetable<float>::WAVEFORM wf);
+    void updateOscillator(const int idx, const Track &t);
     
     //business/helper functions
     void init(const Analysis::WINDOW w, const int ws, const float sr, const bool p,
@@ -46,6 +47,7 @@ public:
     void interpolatePeak(const float x1, const float x2, const float x3,
                          const float y1, const float y2, const float y3, float &pX, float &pY);
     void breakpoint();
+    void updateOscillator(const int idx, Track * t);
 };
 
 

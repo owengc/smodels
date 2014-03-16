@@ -45,6 +45,10 @@ float * SinusoidalModel::getAnalysisResults(const Analysis::PARAMETER p) const{
 void SinusoidalModel::setWaveform(Wavetable<float>::WAVEFORM wf){
     wavetable->setWaveform(wf, false);
 }
+void SinusoidalModel::updateOscillator(const int idx, Track * t){
+    oscillators[idx].setFrequency(t->frq);
+}
+
 
 //business/helper functions
 void SinusoidalModel::init(const Analysis::WINDOW w, const int ws, const float sr, const bool p,
@@ -66,6 +70,8 @@ void SinusoidalModel::init(const Analysis::WINDOW w, const int ws, const float s
     //hard coding these for now
     trackBirth = 10;
     trackDeath = 5;
+    
+    srand(time(0));
 }
 
 bool SinusoidalModel::operator() (const float sample){//use this to write samples to the input buffer
@@ -151,9 +157,7 @@ void SinusoidalModel::breakpoint(){
                     }
                 }
                 if(deadIdx == -1){//edge case, all tracks in use. randomly steal one
-                    std::default_random_engine generator;
-                    std::uniform_int_distribution<int> distribution(0, maxTracks - 1);
-                    deadIdx = distribution(generator);
+                    deadIdx = (rand() % maxTracks) + 1;
                     tracks[deadIdx].status = Track::STATUS::DEAD;
                     activeTracks--;//book keeping, just killed a track to make room for a new one
                 }
