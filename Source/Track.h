@@ -16,11 +16,11 @@ class SinusoidalModel;
 class Track{
 friend class SinusoidalModel;
 public:
-    enum class STATUS{ALIVE, DEAD, LIMBO};
+    enum class STATUS{BIRTH, ALIVE, DYING, DEAD};
 private:
     float amp, frq, phs, lastAmp, lastFrq, lastPhs;
     STATUS status;
-    int limboFrames;
+    int aliveFrames, birthFrames, dyingFrames;
     SinusoidalModel * model;
 public:
     Track(){
@@ -36,6 +36,7 @@ public:
     void update(const bool matched, const float a = 0, const float f = 0, const float p = 0);//should not be called on dead tracks
 
     const bool isActive(void) const;
+    const bool isDead(void) const;
 };
 
 

@@ -12,8 +12,7 @@
 #define PLUGINPROCESSOR_H_INCLUDED
 
 #include "../JuceLibraryCode/JuceHeader.h"
-#include "Analysis.h"
-#include "Oscillator.h"
+#include "SinusoidalModel.h"
 
 //==============================================================================
 /**
@@ -96,7 +95,8 @@ private:
     //Private Data, helper methods, etc
     int analysisSize;
     bool zeroPadding;
-    Analysis * analyses;
+    //Analysis * analyses;
+    SinusoidalModel * smodels;
     bool UIUpdateFlag;
     bool SpectrogramUpdateFlag;
     //==============================================================================

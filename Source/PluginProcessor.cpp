@@ -19,14 +19,16 @@ SmodelsAudioProcessor::SmodelsAudioProcessor()
     SpectrogramUpdateFlag = true;
     analysisSize = 1024;
     zeroPadding = true;
-    analyses = new Analysis[0];
+    //analyses = new Analysis[0];
+    smodels = new SinusoidalModel[0];
     //std::cout << "processor constructor loc: " << this << std::endl;
 }
     
 
 SmodelsAudioProcessor::~SmodelsAudioProcessor()
 {
-    delete[] analyses;
+    //delete[] analyses;
+    delete[] smodels;
 }
 
 //==============================================================================
@@ -136,10 +138,13 @@ void SmodelsAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     int numChannels = getNumInputChannels();
-    delete[] analyses;
-    analyses = new Analysis[numChannels];
+    //delete[] analyses;
+    //analyses = new Analysis[numChannels];
+    delete[] smodels;
+    smodels = new SinusoidalModel[numChannels];
     for(int i = 0; i < numChannels; ++i){
-        analyses[i].init(Analysis::WINDOW::HANN, analysisSize, (float)sampleRate, zeroPadding);
+        //analyses[i].init(Analysis::WINDOW::HANN, analysisSize, (float)sampleRate, zeroPadding);
+        smodels[i].init(Analysis::WINDOW::HANN, analysisSize, (float)sampleRate, zeroPadding, 4096, Wavetable<float>::WAVEFORM::SINE);
     }
     //std::cout << "processor prepareToPlay loc: " << this << std::endl;
 }
@@ -166,10 +171,14 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
         float * channelData = buffer.getSampleData(channel);
         for (index = 0; index < numSamples; ++index){
             sample = channelData[index];
-            if(analyses[channel](sample)){//write values to analysis buffer
+            //if(analyses[channel](sample)){//write values to analysis buffer
+            if(smodels[channel](sample)){//write values to analysis buffer
                 //take an fft now!
-                analyses[channel].transform(Analysis::TRANSFORM::FFT);
-                analyses[channel].transform(Analysis::TRANSFORM::IFFT);
+                //analyses[channel].transform(Analysis::TRANSFORM::FFT);
+                //analyses[channel].transform(Analysis::TRANSFORM::IFFT);
+                smodels[channel].transform(Analysis::TRANSFORM::FFT);
+                smodels[channel].breakpoint();
+                smodels[channel].transform(Analysis::TRANSFORM::IFFT);
                 update = true;
             }
             else{
@@ -217,7 +226,7 @@ int SmodelsAudioProcessor::getAnalysisSize() const{
 }
 
 float * SmodelsAudioProcessor::getAnalysisResults(const int channel, const Analysis::PARAMETER p) const{
-    switch (p) {
+   /* switch (p) {
         case Analysis::PARAMETER::MAG:
             return &analyses[channel].getMagnitudes();
         case Analysis::PARAMETER::PHS:
@@ -227,7 +236,8 @@ float * SmodelsAudioProcessor::getAnalysisResults(const int channel, const Analy
         default:
             std::cout << "Error: attempting to retrieve analysis results with invalid parameter" << std::endl;
             return nullptr;
-    }
+    }*/
+    return smodels[channel].getAnalysisResults(p);
 }
 
 

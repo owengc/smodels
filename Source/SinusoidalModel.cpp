@@ -63,7 +63,20 @@ void SinusoidalModel::init(const Analysis::WINDOW w, const int ws, const float s
     matches = new bool[maxTracks]{false};
     
     activeTracks = 0;
-    trackDeath = 3;//hard coding this for now
+    //hard coding these for now
+    trackBirth = 10;
+    trackDeath = 5;
+}
+
+bool SinusoidalModel::operator() (const float sample){//use this to write samples to the input buffer
+    return analysis->operator()(sample);
+}
+
+float SinusoidalModel::operator() (void){//use this to read samples from the output buffer
+    return analysis->operator()();//TODO: replace this with output from oscillator bank
+}
+void SinusoidalModel::transform(const Analysis::TRANSFORM t){
+    analysis->transform(t);
 }
 
 void SinusoidalModel::interpolatePeak(const float x1, const float x2, const float x3,
@@ -82,17 +95,18 @@ void SinusoidalModel::breakpoint(){
     float * magnitudes = &analysis->getMagnitudes();
     float * phases = &analysis->getPhases();
     float * frequencies = &analysis->getFrequencies();
-    float mag, magL, magR, phs, phsL, phsR, frq, frqL, frqR, peakMag, peakPhs, peakFrq, lookupFrq;
+    float mag, magL, magR, phs, phsL, phsR, frq, frqL, frqR,
+    peakMag, peakPhs, peakFrq, lookupFrq;//,maxMag = analysis->getMaxMag();
     bool matched;
     int deadIdx;
     memset(matches, false, sizeof(bool) * maxTracks);//these flags are for tracks
-    for(int i = 1; i < maxTracks - 1; ++i){
+    for(int i = 1; i < maxTracks - 1; ++i){//loop over all frq bins
         trackMagThreshold = 1.0 / log(frequencies[i]); //adjust thresholds according to frequency range
         trackFrqThreshold = log(frequencies[i]);
         magL = magnitudes[i-1];
         mag = magnitudes[i];
         magR = magnitudes[i+1];
-        if((mag > trackMagThreshold) && (magL < mag < magR)){
+        if(mag > trackMagThreshold && magL < mag && mag > magR){
             //at local max
             frqL = frequencies[i-1];
             frq = frequencies[i];
@@ -107,41 +121,54 @@ void SinusoidalModel::breakpoint(){
             //should maybe just use phase diff from last window to further refine frq estimate
             peakPhs = (peakFrq == frq)?phs:(peakFrq < frq)? (mag - magL)/(frq - frqL) * (peakFrq - frqL):
             (magR - mag)/(frqR - frq) * (frqR - peakFrq);
-            std::cout << "Peak detected. Frq: " << peakFrq << " Mag: " << peakMag << " Phs: " << peakPhs << std::endl;
+            //std::cout << "Peak detected. Frq: " << peakFrq << " Mag: " << peakMag << " Phs: " << peakPhs << std::endl;
             matched = false;//flag for matching this peak to a track
             deadIdx = -1;
             for(int j = 0; j < maxTracks; ++j){//attempt to match peak to existing track
-                if(tracks[j].isActive()){//only attempt to match to living or limbo tracks
+                if(!tracks[j].isDead()){//only attempt to match to living or limbo tracks
                     if(!matches[j]){//skip this track if another peak has already matched to it
                         lookupFrq = tracks[j].frq;
                         if(peakFrq >= lookupFrq - trackFrqThreshold && peakFrq <= lookupFrq + trackFrqThreshold){
                             matched = true;//peak is within frq threshold of this track
                             matches[j] = true;
                             tracks[j].update(true, sqrt(peakMag), peakFrq, peakPhs);
+                            //std::cout << "Track " << j << " matched. Frq: " << peakFrq << " Mag: " << peakMag << " Phs: " << peakPhs << std::endl;
+                            //std::cout << "Track " << j << " matched at frq " << peakFrq << ". Age: " << tracks[j].aliveFrames << std::endl;
+                            break;
                         }
                     }
                 }
-                else{//mark dead tracks as such
+                else{//store this for a slight speed boost..
                     deadIdx = j;
-                    matches[j] = false;
                 }
             }
             if(!matched){//create new track
-                         //use last encountered dead track as a new one
+                if(deadIdx == -1){//did not encounter a dead track on previous pass, must search for one
+                    for(int j = 0; j < maxTracks; ++j){//might be a good place to use binary search is this proves costly
+                        if(tracks[j].isDead()){
+                            deadIdx = j;
+                        }
+                    }
+                }
                 if(deadIdx == -1){//edge case, all tracks in use. randomly steal one
                     std::default_random_engine generator;
                     std::uniform_int_distribution<int> distribution(0, maxTracks - 1);
                     deadIdx = distribution(generator);
+                    tracks[deadIdx].status = Track::STATUS::DEAD;
+                    activeTracks--;//book keeping, just killed a track to make room for a new one
                 }
+                //assert(tracks[deadIdx].status == Track::STATUS::DEAD);
                 tracks[deadIdx].init(this, sqrt(peakMag), peakFrq, peakPhs);
             }
         }
     }
-    for(int i = 1; i < maxTracks - 1; ++i){
-        if(tracks[i].isActive() && !matches[i]){//update active, unmatched tracks
+    for(int i = 0; i < maxTracks; ++i){
+        if(tracks[i].isActive()){//do another pass to check to update active tracks that may have gone stale matches[i]){//
+                                 //assert(tracks[i].status != Track::STATUS::DEAD && tracks[i].status != Track::STATUS::BIRTH);
             tracks[i].update(false);
         }
     }
+    //std::cout << "Synthesizing " << activeTracks << " peaks" << std::endl;
 }
 
 
