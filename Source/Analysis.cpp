@@ -38,70 +38,6 @@ Analysis::~Analysis(){
     fftwf_destroy_plan(backwardPlan);
 }
 
-//getters
-float Analysis::get(const int index, const PARAMETER p) const{
-    switch(p){
-        case PARAMETER::REAL:
-            return getReal(index);
-        case PARAMETER::IMAG:
-            return getImag(index);
-        case PARAMETER::MAG:
-            return getMag(index);
-        case PARAMETER::PHS:
-            return getPhs(index);
-        case PARAMETER::FRQ:
-            return getFrq(index);
-        default:
-            std::cout << "Analysis.get called with invalid parameter" << std::endl;
-            return 0.0f;
-    }
-}
-float Analysis::getReal(const int index) const{
-    try{
-        return complexBuffer[index][0];
-    }
-    catch(std::exception){
-        std::cout << "Attempting to access out of range real number index." << std::endl;
-        return 0.0f;
-    }
-}
-float Analysis::getImag(const int index) const{
-    try{
-        return complexBuffer[index][1];
-    }
-    catch(std::exception){
-        std::cout << "Attempting to access out of range imaginary number index." << std::endl;
-        return 0.0f;
-    }
-}
-float Analysis::getMag(const int index) const{
-    try{
-        return magnitudes[index];
-    }
-    catch(std::exception){
-        std::cout << "Attempting to access out of range magnitude index." << std::endl;
-        return 0.0f;
-    }
-}
-float Analysis::getPhs(const int index) const{
-    try{
-        return phases[index];
-    }
-    catch(std::exception){
-        std::cout << "Attempting to access out of range phs index." << std::endl;
-        return 0.0f;
-    }
-}
-float Analysis::getFrq(const int index) const{
-    try{
-        return frequencies[index];
-    }
-    catch(std::exception){
-        std::cout << "Attempting to access out of range frequency index." << std::endl;
-        return 0.0f;
-    }
-}
-
 //setters
 void Analysis::setWindow(const WINDOW w){//might support more options later
     for(int i = 0; i < windowSize; ++i){
@@ -117,65 +53,8 @@ void Analysis::setWindow(const WINDOW w){//might support more options later
     }
 }
 
-void Analysis::setComplex(const int index, const float realVal, const float imagVal){
-    try{
-        complexBuffer[index][0] = realVal;
-        complexBuffer[index][1] = imagVal;
-    }
-    catch(std::exception){
-        std::cout << "Attempting to set out of range complex number index." << std::endl;
-    }
-}
-void Analysis::set(const int index, const PARAMETER p, const float val){
-    switch(p){
-        case PARAMETER::REAL:
-            return setReal(index, val);
-        case PARAMETER::IMAG:
-            return setImag(index, val);
-        case PARAMETER::MAG:
-            return setMag(index, val);
-        case PARAMETER::PHS:
-            return setPhs(index, val);
-        default:
-            std::cout << "Analysis.set called with invalid parameter" << std::endl;
-    }
-}
-void Analysis::setReal(const int index, const float val){
-    try{
-        complexBuffer[index][0] = val;
-    }
-    catch(std::exception){
-        std::cout << "Attempting to set out of range real number index." << std::endl;
-    }
-}
-void Analysis::setImag(const int index, const float val){
-    try{
-        complexBuffer[index][1] = val;
-    }
-    catch(std::exception){
-        std::cout << "Attempting to set out of range imaginary number index." << std::endl;
-    }
-}
-void Analysis::setMag(const int index, const float val){
-    try{
-        magnitudes[index] = val;
-    }
-    catch(std::exception){
-        std::cout << "Attempting to set out of range magnitude index." << std::endl;
-    }
-}
-void Analysis::setPhs(const int index, const float val){
-    try{
-        magnitudes[index] = val;
-    }
-    catch(std::exception){
-        std::cout << "Attempting to set out of range magnitude index." << std::endl;
-    }
-}
-
 //business methods
 bool Analysis::operator() (const float sample){//use this to write samples to the input buffer
-    
     inputBuffer->write(sample);//assuming normalized input
     numWrittenSinceFFT++;
     //return true once we've gotten enough new samples to take another FFT
@@ -218,18 +97,16 @@ void Analysis::updateSpectrum(){
     assert(state == DATA::SPECTRUM);
     int i = 1; //ignoring dc & nyquist
     float real, imag, mag;
+    maxMag = 0;
     for(; i < numBins; ++i){//before calculating magnitude, divide by windowSize and multiply by two
         real = complexBuffer[i][0] / (numBins - 1);
         imag = complexBuffer[i][1] / (numBins - 1);
         //mag = 20.0 * log10f(sqrt(real * real + imag * imag));
         mag = sqrt(real * real + imag * imag);
-
-        //if(mag > 0.1f)
-        //{
-        //    std::cout << "unscaled mag: " << mag << std::endl;
-        //}
-        //(float)i/numBins;//
-        magnitudes[i] = mag;// / (numBins - 1); //using numBins because numBins == windowSize/2 + 1
+        magnitudes[i] = mag;
+        if(mag > maxMag){
+            maxMag = mag;
+        }
         phases[i] = atan2f(imag, real) + M_PI;
     }
 }

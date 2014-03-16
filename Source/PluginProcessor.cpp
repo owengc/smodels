@@ -139,7 +139,7 @@ void SmodelsAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     delete[] analyses;
     analyses = new Analysis[numChannels];
     for(int i = 0; i < numChannels; ++i){
-        analyses[i].init(analysisSize, (float)sampleRate, zeroPadding);
+        analyses[i].init(Analysis::WINDOW::HANN, analysisSize, (float)sampleRate, zeroPadding);
     }
     //std::cout << "processor prepareToPlay loc: " << this << std::endl;
 }

@@ -36,6 +36,7 @@ public:
     
     void setWaveform(const WAVEFORM wf, bool force){
         if(type != wf || force){
+            type = wf;
             for(int i = 0; i < size; ++i){
                 switch(type){
                     case WAVEFORM::SINE:
@@ -59,8 +60,12 @@ private:
     T samplingRate, frequency, phase, increment, fraction;
     Wavetable<T> * wavetable;
 public:
-    Oscillator();
-    ~Oscillator();
+    Oscillator(){
+        wavetable = nullptr;
+    };
+    ~Oscillator(){
+        wavetable = nullptr;
+    };
     
     void init(Wavetable<T> &wt, const T sr = 44100, const T f = 1.0, const T p = 0.0){
         assert(p >= 0.0 && p <= 1.0);//p = [0.0, 1.0]

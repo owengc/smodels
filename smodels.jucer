@@ -22,6 +22,8 @@
       <FILE id="Qdq86r" name="fft.h" compile="0" resource="0" file="../../WDL/fft.h"/>
     </GROUP>
     <GROUP id="{1EA455EA-8216-F2F6-E05F-6C83AE7D9B1C}" name="DSP">
+      <FILE id="kkkmG6" name="Track.cpp" compile="1" resource="0" file="Source/Track.cpp"/>
+      <FILE id="sCxgQn" name="Track.h" compile="0" resource="0" file="Source/Track.h"/>
       <FILE id="apw3IE" name="SinusoidalModel.cpp" compile="1" resource="0"
             file="Source/SinusoidalModel.cpp"/>
       <FILE id="rEt37z" name="SinusoidalModel.h" compile="0" resource="0"

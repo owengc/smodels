@@ -32,6 +32,7 @@ public:
     enum class WINDOW{HANN};
 private:
     int samplingRate, windowSize, hopSize, paddedSize, numBins, numWrittenSinceFFT, appetite;
+    float maxMag;
     bool padded;
     DATA state;
     WINDOW windowType;
@@ -53,12 +54,7 @@ public:
     //getters
     int getWindowSize() const{return windowSize;}
     int getNumBins() const{return numBins;}
-    float get(const int index, const PARAMETER p) const;
-    float getReal(const int index) const;
-    float getImag(const int index) const;
-    float getMag(const int index) const;
-    float getPhs(const int index) const;
-    float getFrq(const int index) const;
+    float getMaxMag() const{return maxMag;}
     float & getMagnitudes() const{return *magnitudes;}
     float & getPhases() const{return *phases;}
     float & getFrequencies() const{return *frequencies;}
@@ -68,12 +64,6 @@ public:
 
     //setters
     void setWindow(const WINDOW w);
-    void setComplex(const int index, const float realVal, const float imagVal = 0.0f);
-    void set(const int index, const PARAMETER p, const float val = 0.0f);
-    void setReal(const int index, const float val = 0.0f);
-    void setImag(const int index, const float val = 0.0f);
-    void setMag(const int index, const float val = 0.0f);
-    void setPhs(const int index, const float val = 0.0f);
     
     //business & utility methods
     bool operator() (const float sample);//use this to write samples to the input buffer
