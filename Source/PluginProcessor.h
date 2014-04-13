@@ -13,7 +13,8 @@
 
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "SinusoidalModel.h"
-
+#include "Oscillator.h"
+#include <sstream>
 //==============================================================================
 /**
 */
@@ -99,6 +100,16 @@ private:
     SinusoidalModel * smodels;
     bool UIUpdateFlag;
     bool SpectrogramUpdateFlag;
+    
+    
+    
+    //testing only
+    float sweepTo = 2000.0, sweepFrac;
+    int sweepCounter = 1, sweepMax = 48000;
+    Oscillator<float> * testOsc;
+    Wavetable<float> * testWvTble;
+    ScopedPointer<File> log;
+    ScopedPointer<FileLogger> fl;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SmodelsAudioProcessor)
 };

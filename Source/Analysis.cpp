@@ -107,7 +107,7 @@ void Analysis::updateSpectrum(){
         if(mag > maxMag){
             maxMag = mag;
         }
-        phases[i] = atan2f(imag, real) + M_PI;
+        phases[i] = (atan2f(imag, real) + M_PI) / (2.0 * M_PI);
     }
 }
 

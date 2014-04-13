@@ -39,7 +39,7 @@ public:
     
     //business/helper functions
     void init(const Analysis::WINDOW w, const int ws, const float sr, const bool p,
-              const int wts, Wavetable<float>::WAVEFORM wf);
+              Wavetable<float>::WAVEFORM wf, const int wts);
     
     bool operator() (const float sample);//use this to write samples to the input buffer
     float operator() (void);//use this to read samples from the output buffer

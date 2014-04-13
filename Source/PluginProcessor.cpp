@@ -21,7 +21,13 @@ SmodelsAudioProcessor::SmodelsAudioProcessor()
     zeroPadding = true;
     //analyses = new Analysis[0];
     smodels = new SinusoidalModel[0];
+    testWvTble = new Wavetable<float>;
+    testOsc = new Oscillator<float>;
     //std::cout << "processor constructor loc: " << this << std::endl;
+    
+    
+    log = new File(File::getCurrentWorkingDirectory().getChildFile ("application_gui.log"));
+    fl = new FileLogger(*log, juce::String("Application juce GUI interface starting"));
 }
     
 
@@ -29,6 +35,8 @@ SmodelsAudioProcessor::~SmodelsAudioProcessor()
 {
     //delete[] analyses;
     delete[] smodels;
+    delete testWvTble;
+    delete testOsc;
 }
 
 //==============================================================================
@@ -140,12 +148,27 @@ void SmodelsAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     int numChannels = getNumInputChannels();
     //delete[] analyses;
     //analyses = new Analysis[numChannels];
-    delete[] smodels;
+    /*delete[] smodels;
     smodels = new SinusoidalModel[numChannels];
     for(int i = 0; i < numChannels; ++i){
         //analyses[i].init(Analysis::WINDOW::HANN, analysisSize, (float)sampleRate, zeroPadding);
-        smodels[i].init(Analysis::WINDOW::HANN, analysisSize, (float)sampleRate, zeroPadding, 4096, Wavetable<float>::WAVEFORM::SINE);
-    }
+        smodels[i].init(Analysis::WINDOW::HANN, analysisSize, (float)sampleRate, zeroPadding, Wavetable<float>::WAVEFORM::SINE, 2048);
+    }*/
+
+    delete testOsc;
+    testOsc = new Oscillator<float>;
+
+    delete testWvTble;
+    testWvTble = new Wavetable<float>;//(Wavetable<float>::WAVEFORM::SINE, 2048);
+
+
+    
+    testOsc->init(testWvTble, sampleRate, 0.1, 500, 0.0);
+
+    //std::stringstream message;
+    //message << "Prepare to play " << std::endl;
+    //fl->writeToLog(message.str());
+    
     //std::cout << "processor prepareToPlay loc: " << this << std::endl;
 }
 
@@ -162,12 +185,11 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
     // audio processing...
     
     
-    int numChannels = buffer.getNumChannels(), numSamples = buffer.getNumSamples(), channel = 0, index;
+    int numChannels = buffer.getNumChannels(), numSamples = buffer.getNumSamples(), channel, index;
     //std::cout << "Callback size: " << callbackSize << std::endl;
-    //TODO: instead of monoBuffering, maybe I should try one of those stereo optimizations (treat the two channels as one complex number and take the complex fft, for example)
     float sample;
     bool update = false;
-    for (; channel < numChannels; ++channel){
+    /*for (channel = 0; channel < numChannels; ++channel){
         float * channelData = buffer.getSampleData(channel);
         for (index = 0; index < numSamples; ++index){
             sample = channelData[index];
@@ -184,6 +206,26 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
             else{
                 update = false;
             }
+        }
+    }*/
+    //now that we've analyzed the input, we can replace that data with the output from the model
+    
+    for (channel = 1; channel < numChannels; ++channel){
+        float * channelData = buffer.getSampleData(channel);
+        for (index = 0; index < numSamples; ++index){
+            //channelData[index] = smodels[channel]();
+            channelData[index] = testOsc->next();
+            sweepFrac = (float)sweepCounter/sweepMax;
+            testOsc->setFrequency(sweepFrac * sweepTo);
+            sweepCounter++;
+            if(sweepCounter == sweepMax){
+                sweepCounter = 1;
+            }
+            /*//this logger still blocks...
+             std::stringstream message;
+            message << "Sample " << index << ": " << channelData[index] << std::endl;
+            fl->writeToLog(message.str());*/
+                               //}
         }
     }
     SpectrogramUpdateFlag = update?true:false;

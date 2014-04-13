@@ -52,7 +52,7 @@ void SinusoidalModel::updateOscillator(const int idx, Track * t){
 
 //business/helper functions
 void SinusoidalModel::init(const Analysis::WINDOW w, const int ws, const float sr, const bool p,
-          const int wts, Wavetable<float>::WAVEFORM wf){
+          Wavetable<float>::WAVEFORM wf, const int wts){
     windowSize = ws;
     delete wavetable;
     wavetable = new Wavetable<float>(wf, wts);
@@ -63,6 +63,9 @@ void SinusoidalModel::init(const Analysis::WINDOW w, const int ws, const float s
     tracks = new Track[maxTracks];
     delete[] oscillators;
     oscillators = new Oscillator<float>[maxTracks];
+    for(int i = 0; i < maxTracks; ++i){
+        oscillators[i].init(wavetable, sr, 0.0, 1.0, 0.0);
+    }
     delete[] matches;
     matches = new bool[maxTracks]{false};
     
@@ -79,8 +82,17 @@ bool SinusoidalModel::operator() (const float sample){//use this to write sample
 }
 
 float SinusoidalModel::operator() (void){//use this to read samples from the output buffer
-    return analysis->operator()();//TODO: replace this with output from oscillator bank
+    float out = 0.0;
+    int numActive = 0, i =0;
+    for(; i < maxTracks; ++i){//attempt to match peak to existing track
+        if(tracks[i].isActive()){
+            numActive++;
+            //out += oscillators[i].next();
+        }
+    }
+    return (numActive > 1)?out / numActive:out;
 }
+
 void SinusoidalModel::transform(const Analysis::TRANSFORM t){
     analysis->transform(t);
 }
@@ -102,7 +114,7 @@ void SinusoidalModel::breakpoint(){
     float * phases = &analysis->getPhases();
     float * frequencies = &analysis->getFrequencies();
     float mag, magL, magR, phs, phsL, phsR, frq, frqL, frqR,
-    peakMag, peakPhs, peakFrq, lookupFrq;//,maxMag = analysis->getMaxMag();
+    peakAmp, peakMag, peakPhs, peakFrq, lookupFrq, fraction;//,maxMag = analysis->getMaxMag();
     bool matched;
     int deadIdx;
     memset(matches, false, sizeof(bool) * maxTracks);//these flags are for tracks
@@ -121,12 +133,30 @@ void SinusoidalModel::breakpoint(){
             phs = phases[i];
             phsR = phases[i+1];
             
-            //quadratically interpolate mag/frq
-            interpolatePeak(magL, mag, magR, frqL, frq, frqR, peakMag, peakFrq);
-            //linearly interpolate phase based on adjusted peak?
-            //should maybe just use phase diff from last window to further refine frq estimate
-            peakPhs = (peakFrq == frq)?phs:(peakFrq < frq)? (mag - magL)/(frq - frqL) * (peakFrq - frqL):
-            (magR - mag)/(frqR - frq) * (frqR - peakFrq);
+            //quadratically interpolate peak
+            //std::cout << "interpolating mags {" << magL << ", " << mag << ", " << magR << "} and frqs {" <<
+            //frqL << ", " << frq << ", " << frqR << "}" << std::endl;
+            //interpolatePeak(magL, mag, magR, frqL, frq, frqR, peakMag, peakFrq);
+            interpolatePeak(frqL, frq, frqR, magL, mag, magR, peakFrq, peakMag);
+            peakAmp = sqrt(peakMag);
+            if(peakFrq < 0.0){
+                peakFrq = fabs(peakFrq);
+            }
+                        //should maybe just use phase diff from last window to further refine frq estimate
+            /*if(peakFrq == frq){//linearly interpolate phase based on adjusted peak?
+
+                peakPhs = phs;
+            }
+            else if(peakFrq < frq){
+                fraction = (peakFrq - frqL) / (frq - frqL);
+                peakPhs =
+            }
+            else{
+                
+            }//(magR - mag)/(frqR - frq) * (frqR - peakFrq);
+            
+            peakPhs = fabs(peakPhs);*/
+            peakPhs = phs;
             //std::cout << "Peak detected. Frq: " << peakFrq << " Mag: " << peakMag << " Phs: " << peakPhs << std::endl;
             matched = false;//flag for matching this peak to a track
             deadIdx = -1;
@@ -137,15 +167,16 @@ void SinusoidalModel::breakpoint(){
                         if(peakFrq >= lookupFrq - trackFrqThreshold && peakFrq <= lookupFrq + trackFrqThreshold){
                             matched = true;//peak is within frq threshold of this track
                             matches[j] = true;
-                            tracks[j].update(true, sqrt(peakMag), peakFrq, peakPhs);
+                            tracks[j].update(true, peakAmp, peakFrq, peakPhs);
+                            //oscillators[j].update(peakAmp, peakFrq, peakPhs);
                             //std::cout << "Track " << j << " matched. Frq: " << peakFrq << " Mag: " << peakMag << " Phs: " << peakPhs << std::endl;
-                            //std::cout << "Track " << j << " matched at frq " << peakFrq << ". Age: " << tracks[j].aliveFrames << std::endl;
+                            std::cout << "Track " << j << " matched at frq " << peakFrq << ". Age: " << tracks[j].aliveFrames << std::endl;
                             break;
                         }
                     }
                 }
-                else{//store this for a slight speed boost..
-                    deadIdx = j;
+                else{
+                    deadIdx = j;//store this for a slight speed boost later..
                 }
             }
             if(!matched){//create new track
@@ -162,7 +193,9 @@ void SinusoidalModel::breakpoint(){
                     activeTracks--;//book keeping, just killed a track to make room for a new one
                 }
                 //assert(tracks[deadIdx].status == Track::STATUS::DEAD);
-                tracks[deadIdx].init(this, sqrt(peakMag), peakFrq, peakPhs);
+                //std::cout << "amp: " << peakAmp << ", frq: " << peakFrq << ", phs: " << peakPhs << std::endl;
+                tracks[deadIdx].init(this, peakAmp, peakFrq, peakPhs);
+                //oscillators[deadIdx].start(peakAmp, peakFrq, peakPhs);
             }
         }
     }
@@ -171,8 +204,11 @@ void SinusoidalModel::breakpoint(){
                                  //assert(tracks[i].status != Track::STATUS::DEAD && tracks[i].status != Track::STATUS::BIRTH);
             tracks[i].update(false);
         }
+        else if(tracks[i].isDead()){
+            //oscillators[i].stop();//quiet down the associated oscillator just in case
+        }
     }
-    //std::cout << "Synthesizing " << activeTracks << " peaks" << std::endl;
+     std::cout << "Synthesizing " << activeTracks << " peaks" << std::endl;
 }
 
 
