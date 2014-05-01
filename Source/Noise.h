@@ -30,10 +30,10 @@ private:
     T * values;
 public:
     PinkNoise(){
-        values = new T[0];
-        counters = new int[0];
-        timers = new int[0];
-        generator = new Generator;
+        values = nullptr;
+        counters = nullptr;
+        timers = nullptr;
+        generator = nullptr;
     }
     ~PinkNoise(){
         delete[] values;
@@ -45,14 +45,10 @@ public:
         return (T)(*generator)();
     }
     void init(const T min, const T max){
-        delete generator;
         generator = new Generator(Engine(time(0)), Distribution(min, max));
         octaves = 6;//0th octave is full-on white noise
-        delete[] values;
         values = new T[octaves];
-        delete[] counters;
         counters = new int[octaves];
-        delete[] timers;
         timers = new int[octaves];
         for(int i = 0; i < octaves; ++i){
             values[i] = getRandom();//initialize all octaves with random values

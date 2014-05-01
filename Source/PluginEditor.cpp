@@ -34,6 +34,8 @@ SmodelsAudioProcessorEditor::SmodelsAudioProcessorEditor (SmodelsAudioProcessor*
     screen->setName ("Screen");
 
     //[UserPreSize]
+    openGLContext.setComponentPaintingEnabled(true);
+    openGLContext.attachTo(*this);
     //[/UserPreSize]
 
     setSize (1024, 512);
@@ -89,6 +91,9 @@ void SmodelsAudioProcessorEditor::timerCallback(){
     if(ourProcessor->NeedsUIUpdate()){
         ourProcessor->ClearUIUpdateFlag();
     }
+    
+    //grab value from proc
+    
     /*
      //exchange any data you want between UI elements and the plugin "ourProcessor"
      if(ourProcessor->NeedsUIUpdate()){

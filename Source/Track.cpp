@@ -13,7 +13,8 @@
 
 
 void Track::init(SinusoidalModel * m, const float a, const float f, const float p){//should only be called on dead tracks
-    lastAmp = amp = a, lastFrq = frq = f, lastPhs = phs = p;
+    assert(status == STATUS::DEAD);
+    amp = a, frq = f, phs = p;
     status = STATUS::BIRTH;
     aliveFrames = 0;
     birthFrames = 0;
@@ -23,14 +24,13 @@ void Track::init(SinusoidalModel * m, const float a, const float f, const float 
 
 
 void Track::update(const bool matched, const float a, const float f, const float p){//should never be called on dead tracks
+    assert(status != STATUS::DEAD);
     if(matched){//continuing track
-        lastAmp = amp, lastFrq = frq, lastPhs = phs;
         amp = a, frq = f, phs = p;
         if(status == STATUS::BIRTH){//birthing
             birthFrames++;
             if(birthFrames >= model->trackBirth){
                 status = STATUS::ALIVE;
-                model->activeTracks++;
             }
         }
         else if(status == STATUS::DYING){//revived
@@ -47,7 +47,6 @@ void Track::update(const bool matched, const float a, const float f, const float
             dyingFrames++;
             if(dyingFrames >= model->trackDeath){//it's bleedin' demised
                 status = STATUS::DEAD;
-                model->activeTracks--;
                 aliveFrames = 0;
             }
         }

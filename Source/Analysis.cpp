@@ -10,12 +10,12 @@
 
 #include "Analysis.h"
 Analysis::Analysis(){
-    inputBuffer = new RingBuffer<float>(0);
-    outputBuffer = new RingBuffer<float>(0);
-    window = new float[0];
-    magnitudes = new float[0];
-    phases = new float[0];
-    frequencies = new float[0];
+    inputBuffer = 0;//new RingBuffer<float>(0);
+    outputBuffer = 0;//new RingBuffer<float>(0);
+    window = nullptr;
+    magnitudes = nullptr;
+    phases = nullptr;
+    frequencies = nullptr;
     
     //FFTW
     realBuffer = new float[0];
@@ -103,21 +103,30 @@ void Analysis::updateSpectrum(){
         imag = complexBuffer[i][1] / (numBins - 1);
         //mag = 20.0 * log10f(sqrt(real * real + imag * imag));
         mag = sqrt(real * real + imag * imag);
-        magnitudes[i] = mag;
+        magnitudes[i] = mag;//isnan(mag)?0.0:mag;
         if(mag > maxMag){
             maxMag = mag;
         }
         phases[i] = (atan2f(imag, real) + M_PI) / (2.0 * M_PI);
     }
+    /*for(i = 1; i < numBins; ++i){
+        if(magnitudes[i] < 0.0){//zero-out negative magnitudes
+            magnitudes[i] = 0.0;
+        }
+        else{//normalize
+            magnitudes[i] /= maxMag;
+        }
+    }*/
 }
 
-void Analysis::init(const WINDOW w, const int ws, const int sr, const bool p){
+void Analysis::init(const WINDOW w, const int ws, const int hf, const int sr, const bool p){
     state = DATA::WAVEFORM;
     windowType = w;
     padded = p;
     samplingRate = sr;
     windowSize = ws;
-    hopSize = windowSize / 2;
+    hopFactor = hf;
+    hopSize = windowSize / hopFactor;//TODO: test if shrinking hop size will improve sound quality
     paddedSize = (padded)?windowSize * 2:windowSize;//zero padding
     numBins = paddedSize / 2 + 1;
     numWrittenSinceFFT = 0;

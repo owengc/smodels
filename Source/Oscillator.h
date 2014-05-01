@@ -1,4 +1,4 @@
-/*
+ /*
   ==============================================================================
 
     Oscillator.h
@@ -76,8 +76,8 @@ public:
 template <class T>
 class Oscillator {
 private:
-    int readPosA, readPosB;
-    T samplingRate, amplitude, frequency, phase, targetAmplitude, targetFrequency, targetPhase, increment, sizeOverSr;
+    int readPosA, readPosB, interpDur, interpStep;
+    T samplingRate, amplitude, frequency, phase, targetAmplitude, targetFrequency, currentAmplitude, currentFrequency, increment, sizeOverSr;
     Wavetable<T> * wavetable;
 public:
     Oscillator(){
@@ -89,28 +89,39 @@ public:
     
     void init(Wavetable<T> * wt, const T sr = 44100, const T a = 0.1, const T f = 440.0, const T p = 0.0){
         assert(p >= 0.0 && p <= 1.0);//p = [0.0, 1.0]
-        assert(sr / f <= wt->size && f <= sr / 2);//f = [0.0, Nyquist]
+        //assert(sr / f <= wt->size && f <= sr / 2);//f = [0.0, Nyquist]
         
         samplingRate = sr;
         wavetable = wt;
-        amplitude = a;
-        increment = 0;//this serves as a flag
-        setFrequency(f);
+        amplitude = targetAmplitude = a;
+        frequency = targetFrequency = f;
+        setFrequency(targetFrequency);
         phase = p;
         sizeOverSr = wavetable->size / samplingRate;
     }
     
     T next(){
-        T out = 0.0;
+        T out = 0.0, interpFactor = (T)interpStep / interpDur;
         double fraction;
         readPosA = (int)phase;
         readPosB = readPosA + 1;
         fraction = phase - readPosA;
-
+        
         out = (1.0 - fraction) * wavetable->data[readPosA] +
               fraction * wavetable->data[readPosB];
         //std::cout << "Waveform value " <<  out << std::endl;
         //std::cout << "Oscillator output " <<  out * amplitude << std::endl;
+        
+        //interpolate frequency and amplitude:
+        currentFrequency = interpFactor * frequency + (1.0 - interpFactor) * targetFrequency;
+        currentAmplitude = interpFactor * amplitude + (1.0 - interpFactor) * targetAmplitude;
+        increment = (currentFrequency * sizeOverSr);
+        interpStep++;
+        if(interpStep == interpDur){
+            std::cout << "wrapping interpolation" << std::endl;
+            amplitude = targetAmplitude;
+            frequency = targetFrequency;
+        }
         
         //update phase, wrap
         phase += increment;
@@ -119,63 +130,59 @@ public:
             phase -= wavetable->size;
             //std::cout << "Phase resetting (forward, after): " << phase << std::endl;
         }
-        while(phase < 0.0){
+        /*while(phase < 0.0){//only needed for FM, etc
             //std::cout << "Phase resetting (backward, before): " << phase << std::endl;
             phase += wavetable->size;
             //std::cout << "Phase resetting (backward, after): " << phase << std::endl;
-        }
-        return out * amplitude;
+        }*/
+        //TODO: do linear interp between old values and new values, add new 'increment' vars to interp over hopsize samples
+        //      also, look into time-frequency reassignment
+        return out * currentAmplitude;
     }
-    void update(const T a, const T f, const T p){
+    void update(const T a, const T f, const T p, const int i){
+        interpDur = i;
+        interpStep = 0;
         setAmplitude(a);
         setPhase(p);
         setFrequency(f);
     }
 
     void start(const T a, const T f, const T p){
-        amplitude = a;
+        amplitude = currentAmplitude = targetAmplitude = a;
         phase = p;
-        increment = 0;//this serves as a flag
-        setFrequency(f);
+        frequency = currentFrequency = targetFrequency = f;
     }
     void stop(){
-        amplitude = 0;
+        amplitude = currentAmplitude = targetAmplitude = 0;
     }
     
     //getters
     const T getAmplitude(void) const{
-        return amplitude;
+        return currentAmplitude;
     }
     const T getPhase(void) const{
         return phase;
     }
     const T getFrequency(void) const{
-        return frequency;
+        return currentFrequency;
     }
     
     //setters
     void setPhase(const T p){
         assert(p >= 0.0 && p <= 1.0);
-        phase = (phase * 0.8) + (p * wavetable->size * 0.2);
+        phase = p * wavetable->size;
     }
     void setFrequency(const T f){
         //assert(samplingRate / f <= wavetable->size && f <= samplingRate / 2);
-        frequency = f;
-        if(increment == 0){//do not interpolate at initialization
-            increment = (frequency * sizeOverSr);
-        }
-        else{//interpolate between old value and new value
-            increment = (increment * 0.7) + ((frequency * sizeOverSr) * 0.3);
-        }
+        targetFrequency = f;
     }
     void setAmplitude(const T a){
         assert(a >= 0.0 && a <= 1.0);
-        amplitude = (amplitude * 0.6) + (a * 0.4);
+        targetAmplitude = a;
     }
     void setWavetable(Wavetable<T> &wt){
         wavetable = wt;
-        increment = 0;
-        setFrequency(frequency);
+        setFrequency(targetFrequency);
     }
 };
 

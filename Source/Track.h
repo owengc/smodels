@@ -18,7 +18,7 @@ friend class SinusoidalModel;
 public:
     enum class STATUS{BIRTH, ALIVE, DYING, DEAD};
 private:
-    float amp, frq, phs, lastAmp, lastFrq, lastPhs;
+    float amp, frq, phs;
     STATUS status;
     int aliveFrames, birthFrames, dyingFrames;
     SinusoidalModel * model;

@@ -60,6 +60,7 @@ public:
 private:
     //[UserVariables]   -- You can add your own custom variables in this section.
     ScopedPointer<Spectrogram> spectrogram;
+    OpenGLContext openGLContext;
     //[/UserVariables]
 
     //==============================================================================
