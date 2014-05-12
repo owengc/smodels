@@ -76,8 +76,9 @@ public:
 template <class T>
 class Oscillator {
 private:
-    int readPosA, readPosB, interpDur, interpStep;
-    T samplingRate, amplitude, frequency, phase, targetAmplitude, targetFrequency, currentAmplitude, currentFrequency, increment, sizeOverSr;
+    uint32_t phase, wavetableSize, hiMask, loMask, loBits, maxLength, loPhase;
+    int readPos, interpDur, interpStep;
+    T samplingRate, amplitude, frequency, targetAmplitude, targetFrequency, currentAmplitude, currentFrequency, increment, sizeOverSr;
     Wavetable<T> * wavetable;
 public:
     Oscillator(){
@@ -103,7 +104,7 @@ public:
     T next(){
         T out = 0.0, interpFactor = (T)interpStep / interpDur;
         T fraction;
-        readPosA = (int)phase;
+        readPos = phase >> loBits;
         readPosB = readPosA + 1;
         fraction = phase - readPosA;
         
@@ -140,7 +141,7 @@ public:
         return out * currentAmplitude;
     }
     void update(const T a, const T f, const T p, const int i){
-        interpDur = i;
+        interpDur = appetite;
         interpStep = 0;
         setAmplitude(a);
         setPhase(p);
