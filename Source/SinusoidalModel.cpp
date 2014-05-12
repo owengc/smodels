@@ -11,14 +11,41 @@
 #include "SinusoidalModel.h"
 #include "Track.h"
 
-SinusoidalModel::SinusoidalModel(){
-    analysis = nullptr;
+SinusoidalModel::SinusoidalModel(const Analysis::WINDOW w, const int ws, const int hf, const float sr, const bool p,
+                                 Wavetable<float>::WAVEFORM wf, const int wts){
+    windowSize = ws;
+    //delete wavetable;
+    wavetable = new Wavetable<float>(wf, wts);
+    
+    analysis = new Analysis(w, ws, hf, sr, p);
+    maxTracks = analysis->getNumBins();
+    hopSize = analysis->getAppetite();
+    
+    //delete[] tracks;
+    tracks = new Track[maxTracks];
+    //delete[] oscillators;
+    oscillators = new Oscillator<float>[maxTracks];
+    //delete[] magnitudeThresholds;
+    magnitudeThresholds = new float[maxTracks]{0.0};
+    //delete[] frequencyThresholds;
+    frequencyThresholds = new float[maxTracks]{0.0};
+    //delete[] matches;
+    matches = new bool[maxTracks]{false};
+    
+    float * frequencies = &analysis->getFrequencies();
+    for(int i = 0; i < maxTracks; ++i){
+        oscillators[i].init(wavetable, sr, 0.0, 1.0, 0.0);
+        //adjust thresholds according to frequency range
+        magnitudeThresholds[i] = 1.0 / frequencies[i];
+        frequencyThresholds[i] = log(frequencies[i]);
+    }
+    /*analysis = nullptr;
     wavetable = nullptr;
     tracks = nullptr;
     oscillators = nullptr;
     matches = nullptr;
     magnitudeThresholds = nullptr;
-    frequencyThresholds = nullptr;
+    frequencyThresholds = nullptr;*/
 }
 SinusoidalModel::~SinusoidalModel(){
     delete analysis;
@@ -51,33 +78,7 @@ void SinusoidalModel::setWaveform(Wavetable<float>::WAVEFORM wf){
 
 
 //business/helper functions
-void SinusoidalModel::init(const Analysis::WINDOW w, const int ws, const int hf, const float sr, const bool p,
-          Wavetable<float>::WAVEFORM wf, const int wts){
-    windowSize = ws;
-    delete wavetable;
-    wavetable = new Wavetable<float>(wf, wts);
-    analysis->init(w, ws, hf, sr, p);
-    maxTracks = analysis->getNumBins();
-    hopSize = analysis->getAppetite();
-    
-    delete[] tracks;
-    tracks = new Track[maxTracks];
-    delete[] oscillators;
-    oscillators = new Oscillator<float>[maxTracks];
-    delete[] magnitudeThresholds;
-    magnitudeThresholds = new float[maxTracks]{0.0};
-    delete[] frequencyThresholds;
-    frequencyThresholds = new float[maxTracks]{0.0};
-    delete[] matches;
-    matches = new bool[maxTracks]{false};
-    
-    float * frequencies = &analysis->getFrequencies();
-    for(int i = 0; i < maxTracks; ++i){
-        oscillators[i].init(wavetable, sr, 0.0, 1.0, 0.0);
-        //adjust thresholds according to frequency range
-        magnitudeThresholds[i] = 1.0 / frequencies[i];
-        frequencyThresholds[i] = log(frequencies[i]);
-    }
+void SinusoidalModel::init(){
     
     activeTracks = 0;
     //hard coding these for now
@@ -95,7 +96,7 @@ float SinusoidalModel::operator() (void){//use this to read samples from the out
     float out = 0.0;
     int numActive = 0, i = 0;
     for(; i < maxTracks; ++i){//get output from active tracks
-        if(tracks[i].isActive()){
+        if(tracks[i].active){
             numActive++;
             out += oscillators[i].next();
         }
@@ -160,7 +161,7 @@ void SinusoidalModel::breakpoint(){
             matched = false;//flag for matching this peak to a track
             deadIdx = -1;
             for(int j = 0; j < maxTracks; ++j){//attempt to match peak to existing track
-                if(!tracks[j].isDead()){//only attempt to match to living or limbo tracks
+                if(tracks[j].status != Track::STATUS::DEAD){//only attempt to match to living or limbo tracks
                     
                     //TODO: if already matched, see if this one is closer than previously matched track
                     //      test matches using weighted distance of both frq and mag
@@ -185,7 +186,7 @@ void SinusoidalModel::breakpoint(){
             if(!matched){//create new track
                 if(deadIdx == -1){//did not encounter a dead track on previous pass, must search for one
                     for(int j = 0; j < maxTracks; ++j){//might be a good place to use binary search is this proves costly
-                        if(tracks[j].isDead()){
+                        if(tracks[j].status == Track::STATUS::DEAD){
                             deadIdx = j;
                         }
                     }
@@ -202,13 +203,13 @@ void SinusoidalModel::breakpoint(){
     }
     activeTracks = 0;
     for(int i = 0; i < maxTracks; ++i){
-        if(tracks[i].isActive()){//do another pass to update active tracks that may have gone stale
+        if(tracks[i].active){//do another pass to update active tracks that may have gone stale
             activeTracks++;
             if(!matches[i]){
                 tracks[i].update(false);
             }
         }
-        else if(tracks[i].isDead()){
+        else if(tracks[i].status == Track::STATUS::DEAD){
             oscillators[i].stop();//quiet down the associated oscillator just in case
         }
     }

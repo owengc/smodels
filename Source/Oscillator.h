@@ -102,7 +102,7 @@ public:
     
     T next(){
         T out = 0.0, interpFactor = (T)interpStep / interpDur;
-        double fraction;
+        T fraction;
         readPosA = (int)phase;
         readPosB = readPosA + 1;
         fraction = phase - readPosA;
@@ -118,7 +118,7 @@ public:
         increment = (currentFrequency * sizeOverSr);
         interpStep++;
         if(interpStep == interpDur){
-            std::cout << "wrapping interpolation" << std::endl;
+            //std::cout << "wrapping interpolation" << std::endl;
             amplitude = targetAmplitude;
             frequency = targetFrequency;
         }

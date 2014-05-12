@@ -23,8 +23,10 @@ private:
     int aliveFrames, birthFrames, dyingFrames;
     SinusoidalModel * model;
 public:
+    bool active;
     Track(){
         status = STATUS::DEAD;
+        active = false;
         model = nullptr;
     };
     ~Track(){
@@ -35,7 +37,7 @@ public:
     
     void update(const bool matched, const float a = 0, const float f = 0, const float p = 0);//should not be called on dead tracks
 
-    const bool isActive(void) const;
+    //const bool isActive(void) const;
     const bool isDead(void) const;
 };
 

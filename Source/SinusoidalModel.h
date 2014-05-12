@@ -30,7 +30,8 @@ private:
     int windowSize, hopSize, maxTracks, activeTracks, trackBirth, trackDeath;
     float trackMagThreshold, trackFrqThreshold;
 public:
-    SinusoidalModel();
+    SinusoidalModel(const Analysis::WINDOW w, const int ws, const int hf, const float sr, const bool p,
+                    Wavetable<float>::WAVEFORM wf, const int wts);
     ~SinusoidalModel();
     //getters
     float * getAnalysisResults(const Analysis::PARAMETER p) const;
@@ -38,8 +39,7 @@ public:
     void setWaveform(Wavetable<float>::WAVEFORM wf);
     
     //business/helper functions
-    void init(const Analysis::WINDOW w, const int ws, const int hf, const float sr, const bool p,
-              Wavetable<float>::WAVEFORM wf, const int wts);
+    void init();
     
     bool operator() (const float sample);//use this to write samples to the input buffer
     float operator() (void);//use this to read samples from the output buffer

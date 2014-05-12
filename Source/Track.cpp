@@ -20,6 +20,7 @@ void Track::init(SinusoidalModel * m, const float a, const float f, const float 
     birthFrames = 0;
     dyingFrames = 0;
     model = m;//store pointer to parent model
+    active = false;
 }
 
 
@@ -54,12 +55,19 @@ void Track::update(const bool matched, const float a, const float f, const float
             status = STATUS::DYING;
         }
     }
+    //using 'active' as an optimization to reduce comparisons
+    if(status == STATUS::BIRTH || status == STATUS::DEAD){
+        active = false;
+    }
+    else{
+        active = true;
+    }
 }
 
 //a track is active if it is alive or dying. track is not active if it is dead or in birth
-const bool Track::isActive(void) const{
-    return (status == STATUS::BIRTH || status == STATUS::DEAD)?false:true;
-}
+/*const bool Track::isActive(void) const{
+    return active;
+}*/
 const bool Track::isDead(void) const{
     return (status == STATUS::DEAD)?true:false;
 }

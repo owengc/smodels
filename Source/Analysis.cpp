@@ -7,10 +7,54 @@
 
   ==============================================================================
 */
-
 #include "Analysis.h"
-Analysis::Analysis(){
-    inputBuffer = 0;//new RingBuffer<float>(0);
+Analysis::Analysis(const WINDOW w, const int ws, const int hf, const int sr, const bool p){
+    windowType = w;
+    padded = p;
+    samplingRate = sr;
+    windowSize = ws;
+    hopFactor = hf;
+    hopSize = windowSize / hopFactor;//TODO: test if shrinking hop size will improve sound quality
+    paddedSize = (padded)?windowSize * 2:windowSize;//zero padding
+    numBins = paddedSize / 2 + 1;
+    numWrittenSinceFFT = 0;
+    appetite = windowSize;
+    
+    
+    //delete inputBuffer;
+    inputBuffer = new RingBuffer<float>(windowSize);
+    //delete outputBuffer;
+    outputBuffer = new RingBuffer<float>(windowSize);
+    //delete[] window;
+    window = new float[windowSize]{1.0};
+    //delete[] magnitudes;
+    magnitudes = new float[numBins]{0.0};
+    //delete[] phases;
+    phases = new float[numBins]{0.0};
+    //delete[] frequencies;
+    frequencies = new float[numBins];
+    float scaleFactor = (float)samplingRate / paddedSize;
+    for(int i = 0; i < numBins; ++i){
+        frequencies[i] = i * scaleFactor;
+        //std::cout << "Bin " << i << " frq: " << frequencies[i] << std::endl;
+    }
+    setWindow(windowType);
+    
+    //FFTW
+    //fftwf_free(realBuffer);
+    realBuffer = (float*) fftwf_malloc(sizeof(float) * paddedSize);
+    memset(realBuffer, 0, sizeof(float) * paddedSize);
+    //fftwf_free(complexBuffer);
+    complexBuffer = (fftwf_complex*) fftwf_alloc_complex(sizeof(fftwf_complex) * numBins);
+    memset(complexBuffer, 0, sizeof(fftwf_complex) * numBins);
+    //fftwf_destroy_plan(forwardPlan);
+    forwardPlan = fftwf_plan_dft_r2c_1d(paddedSize, realBuffer, complexBuffer, FFTW_MEASURE);
+    //fftwf_destroy_plan(backwardPlan);
+    backwardPlan = fftwf_plan_dft_c2r_1d(paddedSize, complexBuffer, realBuffer, FFTW_MEASURE);
+    
+    
+    
+    /*inputBuffer = 0;//new RingBuffer<float>(0);
     outputBuffer = 0;//new RingBuffer<float>(0);
     window = nullptr;
     magnitudes = nullptr;
@@ -21,7 +65,7 @@ Analysis::Analysis(){
     realBuffer = new float[0];
     complexBuffer = new fftwf_complex[0];
     forwardPlan = fftwf_plan_dft_r2c_1d(0, realBuffer, complexBuffer, FFTW_MEASURE);
-    backwardPlan = fftwf_plan_dft_c2r_1d(0, complexBuffer, realBuffer, FFTW_MEASURE);
+    backwardPlan = fftwf_plan_dft_c2r_1d(0, complexBuffer, realBuffer, FFTW_MEASURE);*/
 }
 Analysis::~Analysis(){
     delete inputBuffer;
@@ -67,15 +111,12 @@ float Analysis::operator() (void){//use this to read samples from the output buf
 
 void Analysis::transform(const TRANSFORM t){
     if(t == TRANSFORM::IFFT){//IFFT
-        assert(state == DATA::SPECTRUM);
         fftwf_execute(backwardPlan);//1 means inverse FFT
-        state = DATA::WAVEFORM;
         for(int i = 0; i < windowSize; ++i){
             outputBuffer->write(realBuffer[i]);
         }
     }
     else{//FFT
-        assert(state == DATA::WAVEFORM);
         if(appetite != hopSize){
             //after the first frame, we'll only need hopSize more samples to take another FFT
             appetite = hopSize; //putting this here so it won't have to check very often. might be a better way
@@ -86,15 +127,13 @@ void Analysis::transform(const TRANSFORM t){
             realBuffer[i] = inputBuffer->read() * window[i];//apply window function
         }
         fftwf_execute(forwardPlan);//0 means forward FFT
-        state = DATA::SPECTRUM;
-        updateSpectrum();//update mag, phs values in this frame for each bin
         numWrittenSinceFFT = 0;
+        updateSpectrum();//update mag, phs values in this frame for each bin
     }
 }
 
 
 void Analysis::updateSpectrum(){
-    assert(state == DATA::SPECTRUM);
     int i = 1; //ignoring dc & nyquist
     float real, imag, mag;
     maxMag = 0;
@@ -119,48 +158,8 @@ void Analysis::updateSpectrum(){
     }*/
 }
 
-void Analysis::init(const WINDOW w, const int ws, const int hf, const int sr, const bool p){
-    state = DATA::WAVEFORM;
-    windowType = w;
-    padded = p;
-    samplingRate = sr;
-    windowSize = ws;
-    hopFactor = hf;
-    hopSize = windowSize / hopFactor;//TODO: test if shrinking hop size will improve sound quality
-    paddedSize = (padded)?windowSize * 2:windowSize;//zero padding
-    numBins = paddedSize / 2 + 1;
-    numWrittenSinceFFT = 0;
-    appetite = windowSize;
-    
-    
-    delete inputBuffer;
-    inputBuffer = new RingBuffer<float>(windowSize);
-    delete outputBuffer;
-    outputBuffer = new RingBuffer<float>(windowSize);
-    delete[] window;
-    window = new float[windowSize]{1.0};
-    delete[] magnitudes;
-    magnitudes = new float[numBins]{0.0};
-    delete[] phases;
-    phases = new float[numBins]{0.0};
-    delete[] frequencies;
-    frequencies = new float[numBins];
-    float scaleFactor = (float)samplingRate / paddedSize;
-    for(int i = 0; i < numBins; ++i){
-        frequencies[i] = i * scaleFactor;
-        //std::cout << "Bin " << i << " frq: " << frequencies[i] << std::endl;
-    }
-    setWindow(windowType);
-    
-    //FFTW
-    fftwf_free(realBuffer);
-    realBuffer = (float*) fftwf_malloc(sizeof(float) * paddedSize);
+void Analysis::init(){
     memset(realBuffer, 0, sizeof(float) * paddedSize);
-    fftwf_free(complexBuffer);
-    complexBuffer = (fftwf_complex*) fftwf_alloc_complex(sizeof(fftwf_complex) * numBins);
-    memset(complexBuffer, 0, sizeof(fftwf_complex) * numBins);
-    fftwf_destroy_plan(forwardPlan);
-    forwardPlan = fftwf_plan_dft_r2c_1d(paddedSize, realBuffer, complexBuffer, FFTW_MEASURE);
-    fftwf_destroy_plan(backwardPlan);
-    backwardPlan = fftwf_plan_dft_c2r_1d(paddedSize, complexBuffer, realBuffer, FFTW_MEASURE);
+    memset(complexBuffer, 0, sizeof(float) * numBins);
+    numWrittenSinceFFT = 0;
 }

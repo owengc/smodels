@@ -19,8 +19,15 @@ SmodelsAudioProcessor::SmodelsAudioProcessor()
     SpectrogramUpdateFlag = true;
     analysisSize = 1024;
     zeroPadding = true;
+    std::cout << "sample rate at constructor: " << (float)getSampleRate() << std::endl;
     //analyses = new Analysis[0];
-    smodels = new SinusoidalModel[0];
+    //smodels = new SinusoidalModel[JucePlugin_MaxNumInputChannels];
+    
+    for(int i = 0; i < JucePlugin_MaxNumInputChannels; ++i){
+        //analyses[i].init(Analysis::WINDOW::HANN, analysisSize, 4, (float)sampleRate, zeroPadding);
+        smodels.add(new SinusoidalModel(Analysis::WINDOW::HANN, analysisSize, 4, 44100, zeroPadding, Wavetable<float>::WAVEFORM::SINE, 2048));
+        smodels[i]->init();
+    }
     //testWvTble = new Wavetable<float>;
     //testOsc = new Oscillator<float>;
     //std::cout << "processor constructor loc: " << this << std::endl;
@@ -34,7 +41,7 @@ SmodelsAudioProcessor::SmodelsAudioProcessor()
 SmodelsAudioProcessor::~SmodelsAudioProcessor()
 {
     //delete[] analyses;
-    delete[] smodels;
+    //delete[] smodels;
     //delete testWvTble;
     //delete testOsc;
 }
@@ -146,11 +153,9 @@ void SmodelsAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     int numChannels = getNumInputChannels();
-    delete[] smodels;
-    smodels = new SinusoidalModel[numChannels];
     for(int i = 0; i < numChannels; ++i){
         //analyses[i].init(Analysis::WINDOW::HANN, analysisSize, 4, (float)sampleRate, zeroPadding);
-        smodels[i].init(Analysis::WINDOW::HANN, analysisSize, 4, (float)sampleRate, zeroPadding, Wavetable<float>::WAVEFORM::SINE, 2048);
+        smodels[i]->init();
     }
 
     //testing only
@@ -195,12 +200,12 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
         for (index = 0; index < numSamples; ++index){
             sample = channelData[index];
             //if(analyses[channel](sample)){//write values to analysis buffer
-            if(smodels[channel](sample)){//write values to analysis buffer
+            if(smodels[channel]->operator()(sample)){//write values to analysis buffer
                 //take an fft now!
                 //analyses[channel].transform(Analysis::TRANSFORM::FFT);
                 //analyses[channel].transform(Analysis::TRANSFORM::IFFT);
-                smodels[channel].transform(Analysis::TRANSFORM::FFT);
-                smodels[channel].breakpoint();
+                smodels[channel]->transform(Analysis::TRANSFORM::FFT);
+                smodels[channel]->breakpoint();
                 //smodels[channel].transform(Analysis::TRANSFORM::IFFT); not needed
                 update = true;
             }
@@ -214,7 +219,7 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
     for (channel = 0; channel < numChannels; ++channel){
         channelData = buffer.getSampleData(channel);
         for (index = 0; index < numSamples; ++index){
-            channelData[index] = smodels[channel]();
+            channelData[index] = smodels[channel]->operator()();
             
             //testing only:
             /*channelData[index] = testOsc->next();
@@ -282,7 +287,7 @@ float * SmodelsAudioProcessor::getAnalysisResults(const int channel, const Analy
             std::cout << "Error: attempting to retrieve analysis results with invalid parameter" << std::endl;
             return nullptr;
     }*/
-    return smodels[channel].getAnalysisResults(p);
+    return smodels[channel]->getAnalysisResults(p);
 }
 
 

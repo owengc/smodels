@@ -97,7 +97,7 @@ private:
     int analysisSize;
     bool zeroPadding;
     //Analysis * analyses;
-    SinusoidalModel * smodels;
+    OwnedArray<SinusoidalModel> smodels;
     bool UIUpdateFlag;
     bool SpectrogramUpdateFlag;
     

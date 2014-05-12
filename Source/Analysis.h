@@ -28,13 +28,11 @@ class Analysis{
 public:
     enum class TRANSFORM{FFT, IFFT};
     enum class PARAMETER{REAL, IMAG, MAG, PHS, FRQ};
-    enum class DATA{WAVEFORM, SPECTRUM};
     enum class WINDOW{HANN};
 private:
     int samplingRate, windowSize, hopSize, hopFactor, paddedSize, numBins, numWrittenSinceFFT, appetite;
     float maxMag;
     bool padded;
-    DATA state;
     WINDOW windowType;
     RingBuffer<float> * inputBuffer;
     RingBuffer<float> * outputBuffer;
@@ -48,7 +46,7 @@ private:
     float * frequencies;
 public:
     
-    Analysis();
+    Analysis(const WINDOW w = WINDOW::HANN, const int ws = 1024, const int hf = 4, const int sr = 44100, const bool p = true);
     ~Analysis();
     
     //getters
@@ -71,7 +69,7 @@ public:
     float operator() (void);//use this to read samples from the output buffer
     void transform(const TRANSFORM t);
     void updateSpectrum();
-    void init(const WINDOW w = WINDOW::HANN, const int ws = 1024, const int hf = 4, const int sr = 44100, const bool p = true);
+    void init();
 };
 
 #endif  // ANALYSIS_H_INCLUDED
