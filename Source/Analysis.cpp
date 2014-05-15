@@ -20,18 +20,11 @@ Analysis::Analysis(const WINDOW w, const int ws, const int hf, const int sr, con
     numWrittenSinceFFT = 0;
     appetite = windowSize;
     
-    
-    //delete inputBuffer;
     inputBuffer = new RingBuffer<float>(windowSize);
-    //delete outputBuffer;
     outputBuffer = new RingBuffer<float>(windowSize);
-    //delete[] window;
     window = new float[windowSize]{1.0};
-    //delete[] magnitudes;
     magnitudes = new float[numBins]{0.0};
-    //delete[] phases;
     phases = new float[numBins]{0.0};
-    //delete[] frequencies;
     frequencies = new float[numBins];
     float scaleFactor = (float)samplingRate / paddedSize;
     for(int i = 0; i < numBins; ++i){
@@ -41,31 +34,12 @@ Analysis::Analysis(const WINDOW w, const int ws, const int hf, const int sr, con
     setWindow(windowType);
     
     //FFTW
-    //fftwf_free(realBuffer);
     realBuffer = (float*) fftwf_malloc(sizeof(float) * paddedSize);
     memset(realBuffer, 0, sizeof(float) * paddedSize);
-    //fftwf_free(complexBuffer);
     complexBuffer = (fftwf_complex*) fftwf_alloc_complex(sizeof(fftwf_complex) * numBins);
     memset(complexBuffer, 0, sizeof(fftwf_complex) * numBins);
-    //fftwf_destroy_plan(forwardPlan);
     forwardPlan = fftwf_plan_dft_r2c_1d(paddedSize, realBuffer, complexBuffer, FFTW_MEASURE);
-    //fftwf_destroy_plan(backwardPlan);
     backwardPlan = fftwf_plan_dft_c2r_1d(paddedSize, complexBuffer, realBuffer, FFTW_MEASURE);
-    
-    
-    
-    /*inputBuffer = 0;//new RingBuffer<float>(0);
-    outputBuffer = 0;//new RingBuffer<float>(0);
-    window = nullptr;
-    magnitudes = nullptr;
-    phases = nullptr;
-    frequencies = nullptr;
-    
-    //FFTW
-    realBuffer = new float[0];
-    complexBuffer = new fftwf_complex[0];
-    forwardPlan = fftwf_plan_dft_r2c_1d(0, realBuffer, complexBuffer, FFTW_MEASURE);
-    backwardPlan = fftwf_plan_dft_c2r_1d(0, complexBuffer, realBuffer, FFTW_MEASURE);*/
 }
 Analysis::~Analysis(){
     delete inputBuffer;

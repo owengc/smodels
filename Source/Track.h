@@ -20,6 +20,7 @@ public:
 private:
     float amp, frq, phs;
     STATUS status;
+    static int id;
     int aliveFrames, birthFrames, dyingFrames;
     SinusoidalModel * model;
 public:

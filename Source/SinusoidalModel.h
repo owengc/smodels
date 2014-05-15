@@ -25,7 +25,7 @@ private:
     Track * tracks;
     Oscillator<float> * oscillators;
     Wavetable<float> * wavetable;
-    bool * matches;
+    bool * matches, active;
     float * magnitudeThresholds, * frequencyThresholds;
     int windowSize, hopSize, maxTracks, activeTracks, trackBirth, trackDeath;
     float trackMagThreshold, trackFrqThreshold;
@@ -47,6 +47,7 @@ public:
     void interpolatePeak(const float x1, const float x2, const float x3,
                          const float y1, const float y2, const float y3, float &pX, float &pY);
     void breakpoint();
+	int getNumActive(){ return activeTracks; };
 };
 
 

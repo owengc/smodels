@@ -19,7 +19,7 @@ SmodelsAudioProcessor::SmodelsAudioProcessor()
     SpectrogramUpdateFlag = true;
     analysisSize = 1024;
     zeroPadding = true;
-    std::cout << "sample rate at constructor: " << (float)getSampleRate() << std::endl;
+    //std::cout << "sample rate at constructor: " << (float)getSampleRate() << std::endl;
     //analyses = new Analysis[0];
     //smodels = new SinusoidalModel[JucePlugin_MaxNumInputChannels];
     
@@ -206,20 +206,17 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
                 //analyses[channel].transform(Analysis::TRANSFORM::IFFT);
                 smodels[channel]->transform(Analysis::TRANSFORM::FFT);
                 smodels[channel]->breakpoint();
-                //smodels[channel].transform(Analysis::TRANSFORM::IFFT); not needed
                 update = true;
-            }
-            else{
-                update = false;
             }
         }
     }
     //now that we've analyzed the input, we can replace that data with the output from the model
     
     for (channel = 0; channel < numChannels; ++channel){
-        channelData = buffer.getSampleData(channel);
-        for (index = 0; index < numSamples; ++index){
-            channelData[index] = smodels[channel]->operator()();
+		if(smodels[channel]->getNumActive() > 0){
+			channelData = buffer.getSampleData(channel);
+			for (index = 0; index < numSamples; ++index){
+				channelData[index] = smodels[channel]->operator()();
             
             //testing only:
             /*channelData[index] = testOsc->next();
@@ -234,6 +231,7 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
             message << "Sample " << index << ": " << channelData[index] << std::endl;
             fl->writeToLog(message.str());*/
                                //}
+			}
         }
     }
     SpectrogramUpdateFlag = update?true:false;

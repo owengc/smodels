@@ -16,6 +16,11 @@
 #endif
 #define TWOPI (2.0 * M_PI)
 
+/* max tablelength = 4294967296 = 2^^32*/
+#define MAXTABLESIZE 0x10000000
+#define PHASEMASK 0x0FFFFFFF
+//00010000000000000000000000000000
+//00001111111111111111111111111111
 #include <cassert>
 #include <cmath>
 
@@ -28,7 +33,7 @@ friend class Oscillator<T>;
 public:
     enum class WAVEFORM{SINE};
 private:
-    int size, harmonics;
+    uint32_t size, harmonics;
     T * data, step;
     WAVEFORM type;
     T (Wavetable::*generator)(const int index) = nullptr;
@@ -48,10 +53,7 @@ public:
     void setWaveform(const WAVEFORM wf, bool force){
         if(type != wf || force){
             type = wf;
-            int i = 0;
-            for(; i < size; ++i){
-                data[i] = 0;//resetting table
-            }
+            memset(data, 0, sizeof(T));
             switch(type){
                 case WAVEFORM::SINE:
                     generator = &Wavetable::generateSine;
@@ -59,7 +61,7 @@ public:
                 default:
                     break;
             }
-            for(i = 0; i < size; ++i){
+            for(int i = 0; i < size; ++i){
                 data[i] = (this->*generator)(i);
                 //std::cout << "writing to wavetable: " << data[i] << std::endl;
             }
@@ -76,9 +78,8 @@ public:
 template <class T>
 class Oscillator {
 private:
-    uint32_t phase, wavetableSize, hiMask, loMask, loBits, maxLength, loPhase;
-    int readPos, interpDur, interpStep;
-    T samplingRate, amplitude, frequency, targetAmplitude, targetFrequency, currentAmplitude, currentFrequency, increment, sizeOverSr;
+    uint32_t phase, wavetableSize, hiMask, loMask, loBits, loPhase, increment, readPos, interpDur, interpPhase, interpInc;
+    T samplingRate, amplitude, frequency, targetAmplitude, targetFrequency, currentAmplitude, currentFrequency, loDivide, interpDivide, samplingInterval;
     Wavetable<T> * wavetable;
 public:
     Oscillator(){
@@ -88,70 +89,56 @@ public:
         wavetable = nullptr;
     };
     
-    void init(Wavetable<T> * wt, const T sr = 44100, const T a = 0.1, const T f = 440.0, const T p = 0.0){
-        assert(p >= 0.0 && p <= 1.0);//p = [0.0, 1.0]
-        //assert(sr / f <= wt->size && f <= sr / 2);//f = [0.0, Nyquist]
-        
+    void init(Wavetable<T> * wt, const T sr = 44100){
+        uint32_t sizeTest, loMod;
         samplingRate = sr;
         wavetable = wt;
-        amplitude = targetAmplitude = a;
-        frequency = targetFrequency = f;
-        setFrequency(targetFrequency);
-        phase = p;
-        sizeOverSr = wavetable->size / samplingRate;
+        wavetableSize = wavetable->size;
+        for(sizeTest = wavetableSize, loBits = 0; (sizeTest & MAXTABLESIZE) == 0; loBits++, sizeTest <<= 1){
+            ;
+        }
+        assert(sizeTest == MAXTABLESIZE);//makes sure wavetable size is a power of two
+        hiMask = wavetableSize - 1;
+        loMod = MAXTABLESIZE / wavetableSize;
+        loMask = loMod - 1;
+        loDivide = 1.0 / (T)loMod;
+        samplingInterval = MAXTABLESIZE / samplingRate;
+        interpDivide = 1.0 / (T)MAXTABLESIZE;
     }
     
     T next(){
-        T out = 0.0, interpFactor = (T)interpStep / interpDur;
-        T fraction;
+        T out = 0.0, interpFraction = interpPhase * interpDivide, oneMinusInterpFraction = 1.0 - interpFraction, fraction = (phase & loMask) * loDivide;
         readPos = phase >> loBits;
-        readPosB = readPosA + 1;
-        fraction = phase - readPosA;
-        
-        out = (1.0 - fraction) * wavetable->data[readPosA] +
-              fraction * wavetable->data[readPosB];
-        //std::cout << "Waveform value " <<  out << std::endl;
-        //std::cout << "Oscillator output " <<  out * amplitude << std::endl;
+	
+        out = (1.0 - fraction) * wavetable->data[readPos] +
+              fraction * wavetable->data[readPos + 1];
         
         //interpolate frequency and amplitude:
-        currentFrequency = interpFactor * frequency + (1.0 - interpFactor) * targetFrequency;
-        currentAmplitude = interpFactor * amplitude + (1.0 - interpFactor) * targetAmplitude;
-        increment = (currentFrequency * sizeOverSr);
-        interpStep++;
-        if(interpStep == interpDur){
-            //std::cout << "wrapping interpolation" << std::endl;
-            amplitude = targetAmplitude;
-            frequency = targetFrequency;
-        }
-        
+		currentAmplitude = interpFraction * amplitude + oneMinusInterpFraction * targetAmplitude;
+		currentFrequency = interpFraction * frequency + oneMinusInterpFraction * targetFrequency;
+		increment = (uint32_t)(currentFrequency * samplingInterval);
+		
+        interpPhase += interpInc;
+		interpPhase &= PHASEMASK;
         //update phase, wrap
         phase += increment;
-        while(phase >= wavetable->size){
-            //std::cout << "Phase resetting (forward, before): " << phase << std::endl;
-            phase -= wavetable->size;
-            //std::cout << "Phase resetting (forward, after): " << phase << std::endl;
-        }
-        /*while(phase < 0.0){//only needed for FM, etc
-            //std::cout << "Phase resetting (backward, before): " << phase << std::endl;
-            phase += wavetable->size;
-            //std::cout << "Phase resetting (backward, after): " << phase << std::endl;
-        }*/
-        //TODO: do linear interp between old values and new values, add new 'increment' vars to interp over hopsize samples
-        //      also, look into time-frequency reassignment
+        phase &= PHASEMASK;
+        //TODO: look into time-frequency reassignment
         return out * currentAmplitude;
     }
     void update(const T a, const T f, const T p, const int i){
-        interpDur = appetite;
-        interpStep = 0;
+        interpDur = i;
+        interpPhase = 0;
+		interpInc = MAXTABLESIZE / interpDur;
         setAmplitude(a);
-        setPhase(p);
         setFrequency(f);
     }
 
     void start(const T a, const T f, const T p){
+		phase = 0;
         amplitude = currentAmplitude = targetAmplitude = a;
-        phase = p;
         frequency = currentFrequency = targetFrequency = f;
+		increment = (uint32_t)(currentFrequency * samplingInterval);
     }
     void stop(){
         amplitude = currentAmplitude = targetAmplitude = 0;
@@ -161,24 +148,19 @@ public:
     const T getAmplitude(void) const{
         return currentAmplitude;
     }
-    const T getPhase(void) const{
-        return phase;
-    }
     const T getFrequency(void) const{
         return currentFrequency;
     }
     
     //setters
-    void setPhase(const T p){
-        assert(p >= 0.0 && p <= 1.0);
-        phase = p * wavetable->size;
-    }
     void setFrequency(const T f){
         //assert(samplingRate / f <= wavetable->size && f <= samplingRate / 2);
+		frequency = currentFrequency;
         targetFrequency = f;
     }
     void setAmplitude(const T a){
         assert(a >= 0.0 && a <= 1.0);
+		amplitude = currentAmplitude;
         targetAmplitude = a;
     }
     void setWavetable(Wavetable<T> &wt){

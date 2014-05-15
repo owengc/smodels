@@ -31,10 +31,12 @@ SinusoidalModel::SinusoidalModel(const Analysis::WINDOW w, const int ws, const i
     frequencyThresholds = new float[maxTracks]{0.0};
     //delete[] matches;
     matches = new bool[maxTracks]{false};
+    active = new bool[maxTracks]{false};
+    
     
     float * frequencies = &analysis->getFrequencies();
     for(int i = 0; i < maxTracks; ++i){
-        oscillators[i].init(wavetable, sr, 0.0, 1.0, 0.0);
+        oscillators[i].init(wavetable, sr);
         //adjust thresholds according to frequency range
         magnitudeThresholds[i] = 1.0 / frequencies[i];
         frequencyThresholds[i] = log(frequencies[i]);
@@ -94,14 +96,20 @@ bool SinusoidalModel::operator() (const float sample){//use this to write sample
 
 float SinusoidalModel::operator() (void){//use this to read samples from the output buffer
     float out = 0.0;
-    int numActive = 0, i = 0;
-    for(; i < maxTracks; ++i){//get output from active tracks
+	if(activeTracks == 0){
+		return out;
+	}
+	int numChecked = 0;
+    for(int i = 0; i < maxTracks; ++i){//get output from active tracks
         if(tracks[i].active){
-            numActive++;
             out += oscillators[i].next();
+			numChecked++;
+			if(numChecked == activeTracks){
+				break;
+			}
         }
     }
-    return (activeTracks > 1)?out / activeTracks:out;
+    return out / activeTracks;
 }
 
 void SinusoidalModel::transform(const Analysis::TRANSFORM t){
@@ -172,7 +180,7 @@ void SinusoidalModel::breakpoint(){
                             matched = true;//peak is within frq threshold of this track
                             matches[j] = true;
                             tracks[j].update(true, peakAmp, peakFrq, peakPhs);
-                            oscillators[j].update(peakAmp, peakFrq, peakPhs, hopSize);
+                            oscillators[j].update(peakAmp, peakFrq, peakPhs, analysis->getAppetite());
                             //std::cout << "Track " << j << " matched. Frq: " << peakFrq << " Mag: " << peakMag << " Phs: " << peakPhs << std::endl;
                             //std::cout << "Track " << j << " matched at frq " << peakFrq << ". Age: " << tracks[j].aliveFrames << std::endl;
                             break;
@@ -190,10 +198,10 @@ void SinusoidalModel::breakpoint(){
                             deadIdx = j;
                         }
                     }
-                }
-                if(deadIdx == -1){//edge case, all tracks in use. randomly steal one
-                    deadIdx = (rand() % maxTracks) + 1;
-                    tracks[deadIdx].status = Track::STATUS::DEAD;
+					if(deadIdx == -1){//edge case, all tracks in use. randomly steal one
+						deadIdx = (rand() % maxTracks) + 1;
+						tracks[deadIdx].status = Track::STATUS::DEAD;
+					}
                 }
                 //std::cout << "amp: " << peakAmp << ", frq: " << peakFrq << ", phs: " << peakPhs << std::endl;
                 tracks[deadIdx].init(this, peakAmp, peakFrq, peakPhs);
@@ -208,9 +216,6 @@ void SinusoidalModel::breakpoint(){
             if(!matches[i]){
                 tracks[i].update(false);
             }
-        }
-        else if(tracks[i].status == Track::STATUS::DEAD){
-            oscillators[i].stop();//quiet down the associated oscillator just in case
         }
     }
     //std::cout << "Synthesizing " << activeTracks << " of " << maxTracks << " possible tracks" << std::endl;

@@ -45,7 +45,6 @@ private:
     float * phases;
     float * frequencies;
 public:
-    
     Analysis(const WINDOW w = WINDOW::HANN, const int ws = 1024, const int hf = 4, const int sr = 44100, const bool p = true);
     ~Analysis();
     

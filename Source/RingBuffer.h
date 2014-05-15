@@ -14,11 +14,15 @@
 template <class T>
 class RingBuffer {
 private:
-    int size, readPos, writePos;
+    uint32_t size, mask, readPos, writePos;
     T * data;
 public:
     RingBuffer(const int s = 0){
-        size = s;
+        size = s; //size must be power of two!
+		mask = size - 1;
+		//example: size = 1024
+		//size: 00000000000000000000010000000000
+		//mask: 00000000000000000000001111111111
         data = new T[size];
         readPos = 0;
         writePos = 0;
@@ -27,15 +31,11 @@ public:
         delete[] data;
     }
     T read(){
-        if(readPos == size){
-            readPos = 0;
-        }
+		readPos &= mask;
         return data[readPos++];
     }
     void write(const T x){
-        if(writePos == size){
-            writePos = 0;
-        }
+		writePos &= mask;
         data[writePos++] = x;
     }
 };
