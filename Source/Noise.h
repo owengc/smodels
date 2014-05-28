@@ -11,7 +11,6 @@
 #ifndef NOISE_H_INCLUDED
 #define NOISE_H_INCLUDED
 
-#include "RingBuffer.h"
 #include <ctime>
 #include <random>//C++11
 #include <cassert>

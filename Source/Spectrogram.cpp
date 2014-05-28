@@ -36,13 +36,12 @@ Spectrogram::Spectrogram (SmodelsAudioProcessor* ownerFilter, const Rectangle<in
 
     setSize (512, 256);
 
-
     //[Constructor] You can add your own custom stuff here..
     //SmodelsAudioProcessor* ourProcessor = getProcessor();
     graphResolution = ourProcessor->getAnalysisSize() / 2 + 1;
     setBounds(bounds);
     //std::cout << "constructor spectro right bound: " << bounds.getRight() << std::endl;
-    startTimer(40);
+    startTimer(200);
     //std::cout << "spectrogram constructor loc: " << ourProcessor << std::endl;
     //[/Constructor]
 }

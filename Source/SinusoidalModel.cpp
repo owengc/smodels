@@ -10,45 +10,60 @@
 
 #include "SinusoidalModel.h"
 #include "Track.h"
+#define CRUMB 0.0000001
+
+float SinusoidalModel::getCurve(const ThresholdFunction tf, const float x){
+	switch(tf){
+		case ThresholdFunction::oneOverX:
+			return 1.0 / x;
+			break;
+		case ThresholdFunction::logX:
+			return log(x + CRUMB);
+			break;
+		case ThresholdFunction::logXOverX:
+			return log(x + CRUMB) / x;
+			break;
+		case ThresholdFunction::logXSqOverX:
+			return pow(log(x + CRUMB), 2) / x;
+			break;
+		default:
+			return x;
+	}
+}
 
 SinusoidalModel::SinusoidalModel(const Analysis::WINDOW w, const int ws, const int hf, const float sr, const bool p,
                                  Wavetable<float>::WAVEFORM wf, const int wts){
     windowSize = ws;
-    //delete wavetable;
     wavetable = new Wavetable<float>(wf, wts);
-    
     analysis = new Analysis(w, ws, hf, sr, p);
     maxTracks = analysis->getNumBins();
     hopSize = analysis->getAppetite();
     
-    //delete[] tracks;
     tracks = new Track[maxTracks];
-    //delete[] oscillators;
     oscillators = new Oscillator<float>[maxTracks];
-    //delete[] magnitudeThresholds;
     magnitudeThresholds = new float[maxTracks]{0.0};
-    //delete[] frequencyThresholds;
     frequencyThresholds = new float[maxTracks]{0.0};
-    //delete[] matches;
     matches = new bool[maxTracks]{false};
     active = new bool[maxTracks]{false};
     
-    
+	
+	magThreshFnc = ThresholdFunction::logX;
+	freqThreshFnc = ThresholdFunction::logXOverX;
+	magThresholdFactor = 2.0; //[?, ?]
+	frqThresholdFactor = 50.0; //[?, ?]
+	std::cout << "Magnitude/Frequency Thresholds: " << std::endl;
     float * frequencies = &analysis->getFrequencies();
     for(int i = 0; i < maxTracks; ++i){
         oscillators[i].init(wavetable, sr);
         //adjust thresholds according to frequency range
-        magnitudeThresholds[i] = 1.0 / frequencies[i];
-        frequencyThresholds[i] = log(frequencies[i]);
+        magnitudeThresholds[i] = 1.0 /  (magThresholdFactor * log(frequencies[i] + CRUMB));
+        frequencyThresholds[i] = frqThresholdFactor * log(frequencies[i] + CRUMB) / (frequencies[i] + CRUMB);
+		std::cout << "Bin " << i << " frq: " << frequencies[i] << std::endl <<
+		"M: " << magnitudeThresholds[i] << ", F: " << frequencyThresholds[i] << std::endl;
     }
-    /*analysis = nullptr;
-    wavetable = nullptr;
-    tracks = nullptr;
-    oscillators = nullptr;
-    matches = nullptr;
-    magnitudeThresholds = nullptr;
-    frequencyThresholds = nullptr;*/
 }
+
+
 SinusoidalModel::~SinusoidalModel(){
     delete analysis;
     delete wavetable;
@@ -91,7 +106,7 @@ void SinusoidalModel::init(){
 }
 
 bool SinusoidalModel::operator() (const float sample){//use this to write samples to the input buffer
-    return analysis->operator()(sample);
+    return analysis->operator()(sample) ;
 }
 
 float SinusoidalModel::operator() (void){//use this to read samples from the output buffer
@@ -109,7 +124,8 @@ float SinusoidalModel::operator() (void){//use this to read samples from the out
 			}
         }
     }
-    return out / activeTracks;
+	float unnormalizeFactor = 1.0 / analysis->getMagnitudeNormalizationFactor();
+    return unnormalizeFactor * (out);// / (float)activeTracks);
 }
 
 void SinusoidalModel::transform(const Analysis::TRANSFORM t){
@@ -126,7 +142,7 @@ void SinusoidalModel::interpolatePeak(const float x1, const float x2, const floa
     
     pX = -b / (2 * a);
     pY = c - b * b / (4 * a);
-}//TODO: make this faster
+}//TODO: make this faster?
 
 void SinusoidalModel::breakpoint(){
     hopSize = analysis->getAppetite();
@@ -134,17 +150,17 @@ void SinusoidalModel::breakpoint(){
     float * phases = &analysis->getPhases();
     float * frequencies = &analysis->getFrequencies();
     float mag, magL, magR, phs, phsL, phsR, frq, frqL, frqR,
-    peakAmp, peakMag, peakPhs, peakFrq, lookupFrq;//,maxMag = analysis->getMaxMag();
+    peakAmp, peakMag, peakPhs, peakFrq, lookupFrq, magThreshold, frqThreshold;//,maxMag = analysis->getMaxMag();
     bool matched;
     int deadIdx;
     memset(matches, false, sizeof(bool) * maxTracks);//these flags are for tracks
     for(int i = 1; i < maxTracks - 1; ++i){//loop over all frq bins
-        trackMagThreshold = magnitudeThresholds[i]; //adjust thresholds according to frequency range
-        trackFrqThreshold = frequencyThresholds[i];
+        magThreshold = magnitudeThresholds[i]; //adjust thresholds according to frequency range
+        frqThreshold = frequencyThresholds[i];
         magL = magnitudes[i-1];
         mag = magnitudes[i];
         magR = magnitudes[i+1];
-        if(mag > trackMagThreshold && magL < mag && mag > magR){
+        if(mag > magThreshold && magL < mag && mag > magR){
             //at local max
             frqL = frequencies[i-1];
             frq = frequencies[i];
@@ -176,7 +192,7 @@ void SinusoidalModel::breakpoint(){
                     
                     if(!matches[j]){//skip this track if another peak has already matched to it
                         lookupFrq = tracks[j].frq;
-                        if(peakFrq >= lookupFrq - trackFrqThreshold && peakFrq <= lookupFrq + trackFrqThreshold){
+                        if(peakFrq >= lookupFrq - frqThreshold && peakFrq <= lookupFrq + frqThreshold){
                             matched = true;//peak is within frq threshold of this track
                             matches[j] = true;
                             tracks[j].update(true, peakAmp, peakFrq, peakPhs);

@@ -109,8 +109,7 @@ void Analysis::transform(const TRANSFORM t){
 
 void Analysis::updateSpectrum(){
     int i = 1; //ignoring dc & nyquist
-    float real, imag, mag;
-    maxMag = 0;
+    float real, imag, mag, maxMag = 0;
     for(; i < numBins; ++i){//before calculating magnitude, divide by windowSize and multiply by two
         real = complexBuffer[i][0] / (numBins - 1);
         imag = complexBuffer[i][1] / (numBins - 1);
@@ -122,14 +121,16 @@ void Analysis::updateSpectrum(){
         }
         phases[i] = (atan2f(imag, real) + M_PI) / (2.0 * M_PI);
     }
-    /*for(i = 1; i < numBins; ++i){
+	//normalize magnitudes
+	magnitudeNormalizationFactor = 1.0 / maxMag;
+    for(i = 1; i < numBins; ++i){
         if(magnitudes[i] < 0.0){//zero-out negative magnitudes
             magnitudes[i] = 0.0;
         }
         else{//normalize
-            magnitudes[i] /= maxMag;
+            magnitudes[i] *= magnitudeNormalizationFactor;
         }
-    }*/
+    }
 }
 
 void Analysis::init(){

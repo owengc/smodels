@@ -31,7 +31,7 @@ public:
     enum class WINDOW{HANN};
 private:
     int samplingRate, windowSize, hopSize, hopFactor, paddedSize, numBins, numWrittenSinceFFT, appetite;
-    float maxMag;
+    float magnitudeNormalizationFactor;
     bool padded;
     WINDOW windowType;
     RingBuffer<float> * inputBuffer;
@@ -52,7 +52,7 @@ public:
     int getWindowSize() const{return windowSize;}
     int getNumBins() const{return numBins;}
     int getAppetite() const{return appetite;}
-    float getMaxMag() const{return maxMag;}
+    float getMagnitudeNormalizationFactor() const{return magnitudeNormalizationFactor;}
     float & getMagnitudes() const{return *magnitudes;}
     float & getPhases() const{return *phases;}
     float & getFrequencies() const{return *frequencies;}
