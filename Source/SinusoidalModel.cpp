@@ -124,8 +124,7 @@ float SinusoidalModel::operator() (void){//use this to read samples from the out
 			}
         }
     }
-	float unnormalizeFactor = 1.0 / analysis->getMagnitudeNormalizationFactor();
-    return unnormalizeFactor * (out);// / (float)activeTracks);
+    return out / analysis->getMagnitudeNormalizationFactor();// / (float)activeTracks);
 }
 
 void SinusoidalModel::transform(const Analysis::TRANSFORM t){
@@ -184,6 +183,7 @@ void SinusoidalModel::breakpoint(){
             //std::cout << "Peak detected. Frq: " << peakFrq << " Mag: " << peakMag << " Phs: " << peakPhs << std::endl;
             matched = false;//flag for matching this peak to a track
             deadIdx = -1;
+			
             for(int j = 0; j < maxTracks; ++j){//attempt to match peak to existing track
                 if(tracks[j].status != Track::STATUS::DEAD){//only attempt to match to living or limbo tracks
                     
@@ -209,7 +209,7 @@ void SinusoidalModel::breakpoint(){
             }
             if(!matched){//create new track
                 if(deadIdx == -1){//did not encounter a dead track on previous pass, must search for one
-                    for(int j = 0; j < maxTracks; ++j){//might be a good place to use binary search is this proves costly
+                    for(int j = 0; j < maxTracks; ++j){//might be a good place to use binary search if this proves costly
                         if(tracks[j].status == Track::STATUS::DEAD){
                             deadIdx = j;
                         }
