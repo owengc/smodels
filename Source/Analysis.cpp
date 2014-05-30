@@ -28,9 +28,9 @@ Analysis::Analysis(const WINDOW w, const int ws, const int hf, const int sr, con
     magnitudes = new float[numBins]{0.0};
     phases = new float[numBins]{0.0};
     frequencies = new float[numBins];
-    float scaleFactor = (float)samplingRate / paddedSize;
+    samplingRateOverSize = (float)samplingRate / paddedSize;
     for(int i = 0; i < numBins; ++i){
-        frequencies[i] = i * scaleFactor;
+        frequencies[i] = i * samplingRateOverSize;
         //std::cout << "Bin " << i << " frq: " << frequencies[i] << std::endl;
     }
     setWindow(windowType);

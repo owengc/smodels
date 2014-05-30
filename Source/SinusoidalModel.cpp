@@ -47,6 +47,7 @@ SinusoidalModel::SinusoidalModel(const Analysis::WINDOW w, const int ws, const i
     active = new bool[maxTracks]{false};
     
 	
+	samplingRateOverSize = analysis->getSamplingRateOverSize();
 	magThreshFnc = ThresholdFunction::logX;
 	freqThreshFnc = ThresholdFunction::logXOverX;
 	magThresholdFactor = 2.0; //[?, ?]
@@ -56,7 +57,6 @@ SinusoidalModel::SinusoidalModel(const Analysis::WINDOW w, const int ws, const i
     for(int i = 0; i < maxTracks; ++i){
         oscillators[i].init(wavetable, sr);
         //adjust thresholds according to frequency range
-		//magnitudeThresholds[i] = 1.0 /  (magThresholdFactor * log(frequencies[i] + CRUMB))
         magnitudeThresholds[i] = 20.0 * log10f(1.0 / (magThresholdFactor * frequencies[i]) + CRUMB); 
         frequencyThresholds[i] = frqThresholdFactor * log(frequencies[i] + CRUMB) / (frequencies[i] + CRUMB);
 		std::cout << "Bin " << i << " frq: " << frequencies[i] << std::endl <<
@@ -137,17 +137,13 @@ void SinusoidalModel::transform(const Analysis::TRANSFORM t){
     analysis->transform(t);
 }
 
-void SinusoidalModel::interpolatePeak(const float x1, const float x2, const float x3,
-                     const float y1, const float y2, const float y3, float &pX, float &pY){
-    //adapted from http://stackoverflow.com/a/717791
-    float x1_Minus_x2 = x1 - x2, x2_Minus_x3 = x2 - x3, oneOverDenom = 1.0 / (x1_Minus_x2) * (x1 - x3) * (x2_Minus_x3);
-    const float a     = (x3 * (y2 - y1) + x2 * (y1 - y3) + x1 * (y3 - y2)) * oneOverDenom;
-    const float b     = (x3*x3 * (y1 - y2) + x2*x2 * (y3 - y1) + x1*x1 * (y2 - y3)) * oneOverDenom;
-    const float c     = (x2 * x3 * (x2_Minus_x3) * y1 + x3 * x1 * (x3 - x1) * y2 + x1 * x2 * (x1_Minus_x2) * y3) * oneOverDenom;
-    
-    pX = -b / (2 * a);
-    pY = c - b * b / (4 * a);
-}//TODO: make this faster?
+void SinusoidalModel::interpolatePeak(const int mIdx, const float ml, const float m, const float mr, float &pm, float &pf){
+	float p, d;
+	d = (ml - mr);
+	p = 0.5 * d / (ml + mr - 2.0 * m);
+	pm = m - 0.25 * d * p;
+	pf = (mIdx + p) * samplingRateOverSize;
+}
 
 void SinusoidalModel::breakpoint(){
     hopSize = analysis->getAppetite();
@@ -166,7 +162,6 @@ void SinusoidalModel::breakpoint(){
         mag = magnitudes[i];
         magR = magnitudes[i+1];
         if(mag > magThreshold && magL < mag && mag > magR){
-			// std::cout << "mag comparison: " << magL << ", " << mag << ", " << magR << std::endl;
             //at local max
             frqL = frequencies[i-1];
             frq = frequencies[i];
@@ -176,7 +171,11 @@ void SinusoidalModel::breakpoint(){
             //std::cout << "interpolating mags {" << magL << ", " << mag << ", " << magR << "} and frqs {" <<
             //frqL << ", " << frq << ", " << frqR << "}" << std::endl;
             //interpolatePeak(magL, mag, magR, frqL, frq, frqR, peakMag, peakFrq);
-            interpolatePeak(frqL, frq, frqR, magL, mag, magR, peakFrq, peakMag);
+            interpolatePeak(i, magL, mag, magR, peakMag, peakFrq);
+			//std::cout << "mag comparison: " << magL << ", " << mag << ", " << magR << std::endl;
+			//std::cout << "interped mag: " << peakMag << std::endl;
+			//std::cout << "frq comparison: " << frqL << ", " << frq << ", " << frqR << std::endl;
+			//std::cout << "interped frq: " << peakFrq << std::endl;
             peakAmp = pow(10, peakMag / 20.0);//sqrt(peakMag);
 			if(peakAmp > 1.0){
 				//std::cout << "clipped amp: " << peakAmp << std::endl;

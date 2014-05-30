@@ -35,7 +35,7 @@ private:
     bool * matches, active;
     float * magnitudeThresholds, * frequencyThresholds;
     int windowSize, hopSize, maxTracks, activeTracks, trackBirth, trackDeath;
-    float magThresholdFactor, frqThresholdFactor;
+    float magThresholdFactor, frqThresholdFactor, samplingRateOverSize;
 	ThresholdFunction freqThreshFnc, magThreshFnc;
 	
 public:
@@ -56,8 +56,8 @@ public:
     bool operator() (const float sample);//use this to write samples to the input buffer
     float operator() (void);//use this to read samples from the output buffer
     void transform(const Analysis::TRANSFORM t);
-    void interpolatePeak(const float x1, const float x2, const float x3,
-                         const float y1, const float y2, const float y3, float &pX, float &pY);
+    void interpolatePeak(const int mIdx, const float ml, const float m, const float mr, float &pm, float &pf);
+	
     void breakpoint();
 	int getNumActive(){ return activeTracks; };
 };
