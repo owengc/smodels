@@ -8,6 +8,7 @@
   ==============================================================================
 */
 #include "Analysis.h"
+#define CRUMB 0.0000001
 Analysis::Analysis(const WINDOW w, const int ws, const int hf, const int sr, const bool p){
     windowType = w;
     padded = p;
@@ -22,7 +23,8 @@ Analysis::Analysis(const WINDOW w, const int ws, const int hf, const int sr, con
     
     inputBuffer = new RingBuffer<float>(windowSize);
     outputBuffer = new RingBuffer<float>(windowSize);
-    window = new float[windowSize]{1.0};
+    window = new float[windowSize]{0.0};
+	amplitudes = new float[numBins]{0.0};
     magnitudes = new float[numBins]{0.0};
     phases = new float[numBins]{0.0};
     frequencies = new float[numBins];
@@ -58,11 +60,17 @@ Analysis::~Analysis(){
 
 //setters
 void Analysis::setWindow(const WINDOW w){//might support more options later
+	float sigma, denom;
     for(int i = 0; i < windowSize; ++i){
         switch(w){
             case WINDOW::HANN:
-                window[i] = 0.5 * (1 - cos(2 * M_PI * i / windowSize));
+                window[i] = 0.5 * (1 - cos(2 * M_PI * i / float(windowSize)));
                 break;
+			case WINDOW::GAUSSIAN:
+				sigma = windowSize / 8;
+				denom = 1.0 / (2 * sigma * sigma);
+				window[i] = expf(-((windowSize - i) * (windowSize - i)) * denom);
+				break;
             default:
                 std::cout << "invalid window type. defaulting to rectangle" << std::endl;
                 window[i] = 1.0;
@@ -109,28 +117,25 @@ void Analysis::transform(const TRANSFORM t){
 
 void Analysis::updateSpectrum(){
     int i = 1; //ignoring dc & nyquist
-    float real, imag, mag, maxMag = 0;
-    for(; i < numBins; ++i){//before calculating magnitude, divide by windowSize and multiply by two
-        real = complexBuffer[i][0] / (numBins - 1);
-        imag = complexBuffer[i][1] / (numBins - 1);
-        //mag = 20.0 * log10f(sqrt(real * real + imag * imag));
-        mag = sqrt(real * real + imag * imag);
-        magnitudes[i] = mag;//isnan(mag)?0.0:mag;
-        if(mag > maxMag){
-            maxMag = mag;
+    float real, imag, amp, maxAmp = -MAXFLOAT, scaleFactor = 1.0 / (numBins - 1);
+    for(; i < numBins - 1; ++i){//before calculating magnitude, divide by windowSize and multiply by two
+        real = complexBuffer[i][0];
+        imag = complexBuffer[i][1];
+		amp = sqrt(real * real + imag * imag) * scaleFactor;
+        if(amp > maxAmp){
+            maxAmp = amp;
+			//std::cout << "max amp: " << maxMag << std::endl;
         }
+		//std::cout << "amp: " << amp << std::endl;
+		amplitudes[i] = amp;
         phases[i] = (atan2f(imag, real) + M_PI) / (2.0 * M_PI);
     }
-	//normalize magnitudes
-	magnitudeNormalizationFactor = 1.0 / maxMag;
-    for(i = 1; i < numBins; ++i){
-        if(magnitudes[i] < 0.0){//zero-out negative magnitudes
-            magnitudes[i] = 0.0;
-        }
-        else{//normalize
-            magnitudes[i] *= magnitudeNormalizationFactor;
-        }
-    }
+	//normalize magnitudes and convert to dB
+	amplitudeNormalizationFactor = 1.0 / maxAmp;
+	for(i = 1; i < numBins - 1; ++i){
+		magnitudes[i] = 20.0 * log10f(amplitudes[i] /* amplitudeNormalizationFactor*/ + CRUMB);
+		//std::cout << "mag: " << magnitudes[i] << std::endl;
+	}
 }
 
 void Analysis::init(){

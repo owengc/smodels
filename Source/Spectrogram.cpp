@@ -71,7 +71,7 @@ void Spectrogram::paint (Graphics& g)
     int numChannels = ourProcessor->getNumInputChannels(), channel = 0, i;
     float graphWidth = bounds.getWidth(), graphHeight = bounds.getHeight(), graphBottom = bounds.getBottom(),
     graphTop = 0.0, barWidth = graphWidth / graphResolution, barLeft, barTop = graphHeight, barHeight, alpha = 0.5f;
-    const float * magnitudes, * mag;
+    float * amplitudes, amp, ampNormFactor;
     for(; channel < numChannels; ++channel){
         g.beginTransparencyLayer(alpha);
         if(channel == 0){
@@ -80,12 +80,15 @@ void Spectrogram::paint (Graphics& g)
         else{
             g.setColour(Colour(0.15, 1.0, 1.0f, 1.0f));//yellow
         }
-        magnitudes = ourProcessor->getAnalysisResults(channel, Analysis::PARAMETER::MAG);
+        amplitudes = ourProcessor->getAnalysisResults(channel, Analysis::PARAMETER::MAG);
+		ampNormFactor = ourProcessor->getAmpNormFactor(channel);
         for(i = 0; i < graphResolution; ++i){
             barLeft = (i * barWidth);
-            mag = &magnitudes[i];
-            if(*mag > 0.0f){
-                barHeight = (*mag < 1.0f)?graphHeight * *mag:graphHeight; //clamp bar height to full for clipped magnitudes
+			//convert back from decibels
+            amp = amplitudes[i] * ampNormFactor;
+			//std::cout << "spectrogram"
+            if(amp > 0.0f){
+                barHeight = (amp < 0.0f)?graphHeight * amp:graphHeight; //clamp bar height to full for clipped magnitudes
                 barTop = graphTop + (graphHeight - barHeight);
                 g.drawVerticalLine(barLeft, barTop, graphBottom);
             }

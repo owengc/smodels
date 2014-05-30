@@ -70,6 +70,7 @@ public:
     //Custom Methods, Params, and Public Data
     int getAnalysisSize() const;
     float * getAnalysisResults(const int channel, const Analysis::PARAMETER p) const;
+	float getAmpNormFactor(const int channel) const;
     /*enum Parameters{
         MasterBypass = 0,
         Mix,

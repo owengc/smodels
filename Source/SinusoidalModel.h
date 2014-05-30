@@ -44,6 +44,8 @@ public:
     ~SinusoidalModel();
     //getters
     float * getAnalysisResults(const Analysis::PARAMETER p) const;
+	float getAmpNormFactor() const;
+
     //setters
     void setWaveform(Wavetable<float>::WAVEFORM wf);
     

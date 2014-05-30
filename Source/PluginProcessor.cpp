@@ -25,7 +25,7 @@ SmodelsAudioProcessor::SmodelsAudioProcessor()
     
     for(int i = 0; i < JucePlugin_MaxNumInputChannels; ++i){
         //analyses[i].init(Analysis::WINDOW::HANN, analysisSize, 4, (float)sampleRate, zeroPadding);
-        smodels.add(new SinusoidalModel(Analysis::WINDOW::HANN, analysisSize, 4, 44100, zeroPadding, Wavetable<float>::WAVEFORM::SINE, 2048));
+        smodels.add(new SinusoidalModel(Analysis::WINDOW::GAUSSIAN, analysisSize, 4, 44100, zeroPadding, Wavetable<float>::WAVEFORM::SINE, 2048));
         smodels[i]->init();
     }
     //testWvTble = new Wavetable<float>;
@@ -274,20 +274,11 @@ int SmodelsAudioProcessor::getAnalysisSize() const{
 }
 
 float * SmodelsAudioProcessor::getAnalysisResults(const int channel, const Analysis::PARAMETER p) const{
-   /* switch (p) {
-        case Analysis::PARAMETER::MAG:
-            return &analyses[channel].getMagnitudes();
-        case Analysis::PARAMETER::PHS:
-            return &analyses[channel].getPhases();
-        case Analysis::PARAMETER::FRQ:
-            return &analyses[channel].getFrequencies();
-        default:
-            std::cout << "Error: attempting to retrieve analysis results with invalid parameter" << std::endl;
-            return nullptr;
-    }*/
     return smodels[channel]->getAnalysisResults(p);
 }
-
+float SmodelsAudioProcessor::getAmpNormFactor(const int channel) const{
+    return smodels[channel]->getAmpNormFactor();
+}
 
 //==============================================================================
 // This creates new instances of the plugin..

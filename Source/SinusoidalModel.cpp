@@ -56,7 +56,8 @@ SinusoidalModel::SinusoidalModel(const Analysis::WINDOW w, const int ws, const i
     for(int i = 0; i < maxTracks; ++i){
         oscillators[i].init(wavetable, sr);
         //adjust thresholds according to frequency range
-        magnitudeThresholds[i] = 1.0 /  (magThresholdFactor * log(frequencies[i] + CRUMB));
+		//magnitudeThresholds[i] = 1.0 /  (magThresholdFactor * log(frequencies[i] + CRUMB))
+        magnitudeThresholds[i] = 20.0 * log10f(1.0 / (magThresholdFactor * frequencies[i]) + CRUMB); 
         frequencyThresholds[i] = frqThresholdFactor * log(frequencies[i] + CRUMB) / (frequencies[i] + CRUMB);
 		std::cout << "Bin " << i << " frq: " << frequencies[i] << std::endl <<
 		"M: " << magnitudeThresholds[i] << ", F: " << frequencyThresholds[i] << std::endl;
@@ -77,6 +78,8 @@ SinusoidalModel::~SinusoidalModel(){
 //getters
 float * SinusoidalModel::getAnalysisResults(const Analysis::PARAMETER p) const{
     switch (p) {
+        case Analysis::PARAMETER::AMP:
+            return &analysis->getAmplitudes();
         case Analysis::PARAMETER::MAG:
             return &analysis->getMagnitudes();
         case Analysis::PARAMETER::PHS:
@@ -87,6 +90,9 @@ float * SinusoidalModel::getAnalysisResults(const Analysis::PARAMETER p) const{
             std::cout << "Error: attempting to retrieve analysis results with invalid parameter" << std::endl;
             return nullptr;
     }
+}
+float SinusoidalModel::getAmpNormFactor() const{
+	return analysis->getAmplitudeNormalizationFactor();
 }
 //setters
 void SinusoidalModel::setWaveform(Wavetable<float>::WAVEFORM wf){
@@ -124,7 +130,7 @@ float SinusoidalModel::operator() (void){//use this to read samples from the out
 			}
         }
     }
-    return out / analysis->getMagnitudeNormalizationFactor();// / (float)activeTracks);
+    return out  / (float)activeTracks;//analysis->getAmplitudeNormalizationFactor();
 }
 
 void SinusoidalModel::transform(const Analysis::TRANSFORM t){
@@ -160,25 +166,25 @@ void SinusoidalModel::breakpoint(){
         mag = magnitudes[i];
         magR = magnitudes[i+1];
         if(mag > magThreshold && magL < mag && mag > magR){
+			// std::cout << "mag comparison: " << magL << ", " << mag << ", " << magR << std::endl;
             //at local max
             frqL = frequencies[i-1];
             frq = frequencies[i];
             frqR = frequencies[i+1];
-            phsL = phases[i-1];
             phs = phases[i];
-            phsR = phases[i+1];
-            
             //quadratically interpolate peak
             //std::cout << "interpolating mags {" << magL << ", " << mag << ", " << magR << "} and frqs {" <<
             //frqL << ", " << frq << ", " << frqR << "}" << std::endl;
             //interpolatePeak(magL, mag, magR, frqL, frq, frqR, peakMag, peakFrq);
             interpolatePeak(frqL, frq, frqR, magL, mag, magR, peakFrq, peakMag);
-            peakMag = sqrt(peakMag);
-            peakAmp = (peakMag > 1.0)?1.0:(peakMag < 0.0 || isnan(peakMag))?0.0:peakMag;//TODO: figure out why NaNs showed up
-            //
-            if(peakFrq < 0.0){//TODO: figure out why negatives showed up
-                peakFrq = fabs(peakFrq);
-            }
+            peakAmp = pow(10, peakMag / 20.0);//sqrt(peakMag);
+			if(peakAmp > 1.0){
+				//std::cout << "clipped amp: " << peakAmp << std::endl;
+			}
+			else{
+				//std::cout << "amp: " << peakAmp << std::endl;
+			}
+            //peakAmp = (peakMag > 1.0)?1.0:(peakMag < 0.0 || isnan(peakMag))?0.0:peakMag;//TODO: figure out why NaNs showed up
             peakPhs = phs;
             //std::cout << "Peak detected. Frq: " << peakFrq << " Mag: " << peakMag << " Phs: " << peakPhs << std::endl;
             matched = false;//flag for matching this peak to a track
@@ -190,7 +196,7 @@ void SinusoidalModel::breakpoint(){
                     //TODO: if already matched, see if this one is closer than previously matched track
                     //      test matches using weighted distance of both frq and mag
                     
-                    if(!matches[j]){//skip this track if another peak has already matched to it
+                    //if(!matches[j]){//skip this track if another peak has already matched to it
                         lookupFrq = tracks[j].frq;
                         if(peakFrq >= lookupFrq - frqThreshold && peakFrq <= lookupFrq + frqThreshold){
                             matched = true;//peak is within frq threshold of this track
@@ -201,7 +207,7 @@ void SinusoidalModel::breakpoint(){
                             //std::cout << "Track " << j << " matched at frq " << peakFrq << ". Age: " << tracks[j].aliveFrames << std::endl;
                             break;
                         }
-                    }
+                    //}
                 }
                 else{
                     deadIdx = j;//store this for a slight speed boost later..

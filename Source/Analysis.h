@@ -27,11 +27,11 @@
 class Analysis{
 public:
     enum class TRANSFORM{FFT, IFFT};
-    enum class PARAMETER{REAL, IMAG, MAG, PHS, FRQ};
-    enum class WINDOW{HANN};
+    enum class PARAMETER{REAL, IMAG, AMP, MAG, PHS, FRQ};
+    enum class WINDOW{HANN, GAUSSIAN};
 private:
     int samplingRate, windowSize, hopSize, hopFactor, paddedSize, numBins, numWrittenSinceFFT, appetite;
-    float magnitudeNormalizationFactor;
+    float amplitudeNormalizationFactor;
     bool padded;
     WINDOW windowType;
     RingBuffer<float> * inputBuffer;
@@ -41,6 +41,7 @@ private:
     fftwf_plan forwardPlan, backwardPlan;
     
     float * window;
+	float * amplitudes;
     float * magnitudes;
     float * phases;
     float * frequencies;
@@ -52,10 +53,12 @@ public:
     int getWindowSize() const{return windowSize;}
     int getNumBins() const{return numBins;}
     int getAppetite() const{return appetite;}
-    float getMagnitudeNormalizationFactor() const{return magnitudeNormalizationFactor;}
+    float getAmplitudeNormalizationFactor() const{return amplitudeNormalizationFactor;}
+    float & getAmplitudes() const{return *amplitudes;}
     float & getMagnitudes() const{return *magnitudes;}
     float & getPhases() const{return *phases;}
     float & getFrequencies() const{return *frequencies;}
+	float & getAmplitudes() {return *amplitudes;}
     float & getMagnitudes() {return *magnitudes;}
     float & getPhases() {return *phases;}
     float & getFrequencies() {return *frequencies;}
