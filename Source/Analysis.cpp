@@ -131,9 +131,10 @@ void Analysis::updateSpectrum(){
         phases[i] = (atan2f(imag, real) + M_PI) / (2.0 * M_PI);
     }
 	//normalize magnitudes and convert to dB
-	amplitudeNormalizationFactor = 1.0 / maxAmp;
+	normFactor = 1.0 / maxAmp;
+	denormFactor = maxAmp;
 	for(i = 1; i < numBins - 1; ++i){
-		magnitudes[i] = 20.0 * log10f(amplitudes[i] /* amplitudeNormalizationFactor*/ + CRUMB);
+		magnitudes[i] = 20.0 * log10f(amplitudes[i] /* normFactor*/ + CRUMB);
 		//std::cout << "mag: " << magnitudes[i] << std::endl;
 	}
 }

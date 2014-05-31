@@ -16,8 +16,11 @@
 #include "Noise.h"
 #include <cassert>
 #include <ctime>
-class Track;
 
+#define MATCHMATRIXDEPTH 3
+
+class Track;
+class TrackMatch;
 enum class ThresholdFunction{
 	oneOverX,
 	logX,
@@ -34,6 +37,8 @@ private:
     Wavetable<float> * wavetable;
     bool * matches, active;
     float * magnitudeThresholds, * frequencyThresholds;
+	
+	TrackMatch * detected, ** matchMatrix;
     int windowSize, hopSize, maxTracks, activeTracks, trackBirth, trackDeath;
     float magThresholdFactor, frqThresholdFactor, samplingRateOverSize;
 	ThresholdFunction freqThreshFnc, magThreshFnc;
@@ -56,7 +61,10 @@ public:
     bool operator() (const float sample);//use this to write samples to the input buffer
     float operator() (void);//use this to read samples from the output buffer
     void transform(const Analysis::TRANSFORM t);
-    void interpolatePeak(const int mIdx, const float ml, const float m, const float mr, float &pm, float &pf);
+    void interpolatePeak(const int mIdx, const float ml, const float m, const float mr,
+						 const float pL, const float p, const float pR, float &pm, float &pf, float &pp);
+    void interpolatePeak(const int mIdx, const float ml, const float m, const float mr,
+						 float &pm, float &pf);
 	
     void breakpoint();
 	int getNumActive(){ return activeTracks; };
