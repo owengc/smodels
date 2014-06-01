@@ -34,7 +34,7 @@ public:
         model = nullptr;
     };
     
-    void init(SinusoidalModel * m, const float a, const float f, const float p);//should only be called on dead tracks, tracks are born dead
+    void init(SinusoidalModel * m/*, const float a, const float f, const float p*/);//should only be called on dead tracks, tracks are born dead
     
     void update(const bool matched, const float a = 0, const float f = 0, const float p = 0);//should not be called on dead tracks
 

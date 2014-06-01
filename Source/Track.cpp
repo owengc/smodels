@@ -12,9 +12,8 @@
 #include "SinusoidalModel.h"
 
 
-void Track::init(SinusoidalModel * m, const float a, const float f, const float p){//should only be called on dead tracks
+void Track::init(SinusoidalModel * m){//should only be called on dead tracks
     assert(status == STATUS::DEAD);
-    amp = a, frq = f, phs = p;
     status = STATUS::BIRTH;
     aliveFrames = 0;
     birthFrames = 0;
