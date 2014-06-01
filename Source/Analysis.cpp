@@ -121,7 +121,7 @@ void Analysis::updateSpectrum(){
     for(; i < numBins - 1; ++i){//before calculating magnitude, divide by windowSize and multiply by two
         real = complexBuffer[i][0];
         imag = complexBuffer[i][1];
-		amp = sqrt(real * real + imag * imag) * scaleFactor;
+		amp = 2.0 * sqrt(real * real + imag * imag) * scaleFactor;
         if(amp > maxAmp){
             maxAmp = amp;
 			//std::cout << "max amp: " << maxMag << std::endl;

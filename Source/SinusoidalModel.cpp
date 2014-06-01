@@ -11,24 +11,14 @@
 #include "SinusoidalModel.h"
 #include "Track.h"
 #define CRUMB 0.0000001
+#define ONEOVERTWENTY 0.05
 
-int matchSort(TrackMatch &a, TrackMatch &b){
-	float frqDiffA = a.frqDiff, frqDiffB = b.frqDiff,
- 	distSqA = a.distSq, distSqB = b.distSq;
-	if(frqDiffA < frqDiffB){//first sort by frqDiff
-		return -1;
+bool matchSort(const TrackMatch &a, const TrackMatch &b){
+	float frqDiffA = a.frqDiff, frqDiffB = b.frqDiff;
+	if(frqDiffA == frqDiffB){//if tied, sort by overall distanceSq
+		return a.distSq < b.distSq;
 	}
-	else if(frqDiffA > frqDiffB){
-		return 1;
-	}
-	else{//if tied, sort by overall distanceSq
-		if(distSqA < distSqB){
-			return -1;
-		}
-		else{
-			return distSqA > distSqB;
-		}
-	}
+	return frqDiffA < frqDiffB;//otherwise sort by frqDiff
 }
 
 float SinusoidalModel::getCurve(const ThresholdFunction tf, const float x){
@@ -37,13 +27,13 @@ float SinusoidalModel::getCurve(const ThresholdFunction tf, const float x){
 			return 1.0 / x;
 			break;
 		case ThresholdFunction::logX:
-			return log(x + CRUMB);
+			return logf(x + CRUMB);
 			break;
 		case ThresholdFunction::logXOverX:
-			return log(x + CRUMB) / x;
+			return logf(x + CRUMB) / x;
 			break;
 		case ThresholdFunction::logXSqOverX:
-			return pow(log(x + CRUMB), 2) / x;
+			return powf(logf(x + CRUMB), 2) / x;
 			break;
 		default:
 			return x;
@@ -62,27 +52,30 @@ SinusoidalModel::SinusoidalModel(const Analysis::WINDOW w, const int ws, const i
     oscillators = new Oscillator<float>[maxTracks];
     magnitudeThresholds = new float[maxTracks]{0.0};
     frequencyThresholds = new float[maxTracks]{0.0};
+    peakThresholds = new float[maxTracks]{0.0};
 	detected = new TrackMatch[maxTracks];
     matches = new bool[maxTracks]{false};
-    active = new bool[maxTracks]{false};
-	matchMatrix = new TrackMatch*[maxTracks];
-	
+	candidates = new TrackMatch[maxTracks];
+//	matchMatrix.resize(maxTracks * MATCHMATRIXDEPTH); //treating flat vector as matrix
+//	candidates.resize(MATCHMATRIXDEPTH); //used for sorting potential matches
 	
 	samplingRateOverSize = analysis->getSamplingRateOverSize();
 	magThreshFnc = ThresholdFunction::logX;
 	freqThreshFnc = ThresholdFunction::logXOverX;
 	magThresholdFactor = 2.0; //[?, ?]
 	frqThresholdFactor = 50.0; //[?, ?]
+	peakThresholdFactor = 5.0;
 	std::cout << "Magnitude/Frequency Thresholds: " << std::endl;
     float * frequencies = &analysis->getFrequencies();
     for(int i = 0; i < maxTracks; ++i){
-		matchMatrix[i] = new TrackMatch[MATCHMATRIXDEPTH];
         oscillators[i].init(wavetable, sr);
         //adjust thresholds according to frequency range
         magnitudeThresholds[i] = 20.0 * log10f(1.0 / (magThresholdFactor * frequencies[i]) + CRUMB); 
-        frequencyThresholds[i] = log(frequencies[maxTracks - i]) + frqThresholdFactor * log(frequencies[i] + CRUMB) / (frequencies[i] + CRUMB);
+        frequencyThresholds[i] = logf(frequencies[maxTracks - i]) + frqThresholdFactor * logf(frequencies[i] + CRUMB) / (frequencies[i] + CRUMB);
+//        peakThresholds[i] = (1.0 / (peakThresholdFactor * logf(frequencies[maxTracks - i])) + CRUMB);
+		peakThresholds[i] = (1.0 / (peakThresholdFactor * logf(frequencies[i])) + CRUMB);
 		std::cout << "Bin " << i << " frq: " << frequencies[i] << std::endl <<
-		"M: " << magnitudeThresholds[i] << ", F: " << frequencyThresholds[i] << std::endl;
+		"M: " << magnitudeThresholds[i] << ", F: " << frequencyThresholds[i] << ", P: " << peakThresholds[i] << std::endl;
     }
 }
 
@@ -96,10 +89,8 @@ SinusoidalModel::~SinusoidalModel(){
     delete[] matches;
     delete[] magnitudeThresholds;
     delete[] frequencyThresholds;
-	for(int i = 0; i < maxTracks; ++i){
-		delete [] matchMatrix[i];
-	}
-	delete [] matchMatrix;
+    delete[] peakThresholds;
+	delete[] candidates;
 }
 
 //getters
@@ -144,14 +135,14 @@ bool SinusoidalModel::operator() (const float sample){//use this to write sample
 
 float SinusoidalModel::operator() (void){//use this to read samples from the oscillators
     float out = 0.0;
+	int numChecked = 0;
 	if(activeTracks == 0){
 		std::cout << "no active tracks" << std::endl;
 		return out;
 	}
-	int numChecked = 0;
     for(int i = 0; i < maxTracks; ++i){//get output from active tracks
         if(tracks[i].active){
-            out += oscillators[i].next();
+            out += oscillators[i].next() * logf(tracks[i].aliveFrames) * fadeFactor;
 			numChecked++;
 			if(numChecked == activeTracks){
 				break;
@@ -159,7 +150,7 @@ float SinusoidalModel::operator() (void){//use this to read samples from the osc
         }
     }
 
-	//out /= sqrt((float)activeTracks); /**/ //
+	out /= sqrt((float)activeTracks); /**/ //
 										   //out /= analysis->getAmplitudeNormalizationFactor();
 	//std::cout << activeTracks << " active tracks, output amp: " << out << std::endl;
 	//std::cout << "numActive: " << activeTracks << std::endl;
@@ -200,23 +191,22 @@ void SinusoidalModel::interpolatePeak(const int pIdx, const float ml, const floa
 void SinusoidalModel::breakpoint(){
     hopSize = analysis->getAppetite();
     float * magnitudes = &analysis->getMagnitudes();
-    float * phases = &analysis->getPhases();
     float * frequencies = &analysis->getFrequencies();
-    float mag, magL, magR, phs, phsL, phsR, frq, frqL, frqR,
-    peakAmp, peakMag, peakPhs, peakFrq, lookupFrq,
-	frqDiff, ampDiff, phsDiff, magThreshold, frqThreshold, ampScale = analysis->getDenormFactor();;
-    int i, j, k, numNewTracks = 0, deadIdx, maxTracksMinusOne = maxTracks - 1;
+    float * phases = &analysis->getPhases();
+    float mag, magL, magLDiff, magR, magRDiff, phs, phsL, phsR, frq, frqL, frqR,
+    peakAmp, peakMag, peakPhs, peakFrq, lookupAmp, lookupFrq, lookupPhs,
+	frqDiff, magThreshold, frqThreshold, peakThreshold, ampScale = analysis->getNormFactor();
+    int i, j, k, numNewTracks = 0, baseIdx, tailIdx, deadIdx, maxTracksMinusOne = maxTracks - 1;
 	bool matched;
-	TrackMatch * potentialMatch, * competingMatch, * bestMatch;
     memset(matches, false, sizeof(bool) * maxTracks);
     for(i = 1; i < maxTracksMinusOne; ++i){//loop over frq bins
 		detected[i].reset();
 		magThreshold = magnitudeThresholds[i];//pick threshold according to frequency range
-        magL = magnitudes[i-1];
+		magL = magnitudes[i-1];
         mag = magnitudes[i];
         magR = magnitudes[i+1];
-        if(mag > magThreshold && magL < mag && mag > magR){
-            //at local max
+        if(mag > magThreshold && magL < mag && mag > magR){//at local max
+			peakThreshold = peakThresholds[i];
             frqL = frequencies[i-1];
             frq = frequencies[i];
             frqR = frequencies[i+1];
@@ -235,62 +225,97 @@ void SinusoidalModel::breakpoint(){
 			//std::cout << "interped frq: " << peakFrq << std::endl;
 			//std::cout << "phs comparison: " << phsL << ", " << phs << ", " << phsR << std::endl;
 			//std::cout << "interped phs: " << peakPhs << std::endl;
-            peakAmp = pow(10, peakMag / 20.0);
-            //peakPhs = phs;
-            //std::cout << "Peak detected. Frq: " << peakFrq << " Amp: "<< peakAmp << " Mag: " << peakMag << " Phs: " << peakPhs << std::endl;
-			detected[i].idx = i;
-			detected[i].detected = true;
-			detected[i].amp = peakAmp;
-			detected[i].frq = peakFrq;
-			detected[i].phs = peakPhs;
-			numNewTracks++;
+			magLDiff = powf(10.0, (peakMag - magL) * ONEOVERTWENTY) - 1.0;//percentage difference from peak
+			magRDiff = powf(10.0, (peakMag - magR) * ONEOVERTWENTY) - 1.0;//percentage difference from peak
+			if(magLDiff > peakThreshold || magRDiff > peakThreshold){
+//				std::cout << "magLDiff: " << magLDiff << ", magRDiff: " << magRDiff << std::endl;
+	            peakAmp = powf(10.0, peakMag * ONEOVERTWENTY) * ampScale;
+        	    //peakPhs = phs;
+        	    //std::cout << "Peak " << i << " detected. Frq: " << peakFrq << " Amp: "<< peakAmp << " Mag: " << peakMag << " Phs: " << peakPhs << std::endl;
+				detected[i].init(i, true, peakAmp, peakFrq, peakPhs);
+				numNewTracks++;
+			}
         }
     }
 	//attempt to match detected peaks to existing tracks
 	for(j = 0; j < maxTracks; ++j){//looping over tracks
 		if(tracks[j].status != Track::STATUS::DEAD){//only attempt to match to living or limbo tracks
+			candidates[j].reset();
+			lookupAmp = tracks[j].amp;
 			lookupFrq = tracks[j].frq;
-			for(k = 0; k < MATCHMATRIXDEPTH; ++k){
-				matchMatrix[j][k].reset();
-			}
-			//note: below I'm purposefully using the current value of k following this loop (MATCHMATRIXDEPTH -1)
+			lookupPhs = tracks[j].phs;
+//			baseIdx = j * MATCHMATRIXDEPTH;
+//			tailIdx = MATCHMATRIXDEPTH - 1;
+//			for(k = 0; k < MATCHMATRIXDEPTH; ++k){
+//				candidates[k].reset();
+//			}
+//			float minDiff = MAXFLOAT, minThresh = MAXFLOAT; //debugging only
+//			int minIdx = -1; //debugging only
+//			matched = false;
 			for(i = 1; i < maxTracksMinusOne; ++i){//looping over detections
 				if(detected[i].detected){
-					frqThreshold = frequencyThresholds[i];
-					frqDiff = abs(lookupFrq - detected[i].frq);
-					if(frqDiff < frqThreshold * 10.0){//potential match here
-						potentialMatch = &detected[i];
-						//treat matchMatrix vectors as priority queues
-						competingMatch = &matchMatrix[j][k];//test against 'worst best' match
-						if(frqDiff < competingMatch->frqDiff){//replace 'worst best' with this one
-							potentialMatch->setDistanceSq(tracks[j].amp, lookupFrq, tracks[j].phs);
-							matchMatrix[j][k] = *potentialMatch;
-							std::sort(matchMatrix[j], matchMatrix[j] + MATCHMATRIXDEPTH, matchSort);
+					frqThreshold = frequencyThresholds[i];//this index still has relevant frq range info associated with it
+					frqDiff = fabs(lookupFrq - detected[i].frq);//need abs for comparisons
+					if(frqDiff < frqThreshold){//potential match here
+						//test against 'worst best match'
+//						if(frqDiff < candidates[tailIdx].frqDiff){//replace 'worst best' with this one
+						detected[i].setDistanceSq(lookupAmp, lookupFrq, lookupPhs);
+						if(matchSort(detected[i], candidates[j])){
+							candidates[j] = detected[i];
+//							candidates[tailIdx].setDistanceSq(lookupAmp, lookupFrq, lookupPhs);
+//							std::sort(candidates.begin(), candidates.end(), matchSort);
+//							matched = true;
+//							if(frqDiff < minDiff){
+//								matched = true;
+//								minDiff = frqDiff;
+//								minThresh = frqThreshold;
+//								minIdx = i;
+//								std::cout << "matrix idx: " << baseIdx << ", matrix val: " << candidates[tailIdx].idx << ", detected val: " << detected[i].idx << std::endl;
+//							}
 						}
+						
 					}
 				}
 			}
+//			if(matched){
+//				std::copy(candidates.begin(), candidates.end(), matchMatrix.begin() + baseIdx);
+//				std::cout << "track " << j << ", baseIdx: " << baseIdx << ", minIdx: " << minIdx << ", minfrqDiff: " << minDiff << ", threshold: " << minThresh << std::endl;
+//				std::cout << "attempting to match track with frq " << lookupFrq << ". candidates: " << std::endl;
+//				for(k = 0; k < MATCHMATRIXDEPTH; ++k){
+//					std:: cout << "idx " << matchMatrix[baseIdx + k].idx << " frq: " << matchMatrix[baseIdx + k].frq << ", ";
+//				}
+//				std::cout << std::endl << std::endl;
+//			}
 		}
 	}
-	std::cout << "num new before: " << numNewTracks << std::endl;
+//	std::cout << "num new before: " << numNewTracks << std::endl;
 	//now that all potential matches have been found for each track, let's assign the detected peaks
+	
+	longestTrack = 1;
 	for(j = 0; j < maxTracks; ++j){//looping over tracks
 		if(tracks[j].status != Track::STATUS::DEAD){//only attempt to match to living or limbo tracks
+			baseIdx = j * MATCHMATRIXDEPTH;
 			matched = false;
-			for(k = 0; k < MATCHMATRIXDEPTH - 1; ++k){
-				bestMatch = &detected[matchMatrix[j][k].idx];
-				if(!bestMatch->assigned){
-					matched = true;
-					break;
-				}
+//			i = -1;
+//			for(k = 0; k < MATCHMATRIXDEPTH - 1; ++k){
+//				i = matchMatrix[baseIdx + k].idx;
+//				if(i > 0 && detected[i].detected && !detected[i].assigned){
+//					std::cout << "using " << k << "th candidate" << std::endl;
+//					matched = true;
+//					break;
+//				}
+//			}
+			i = candidates[j].idx;
+			if(i > 0 && detected[i].detected && !detected[i].assigned){
+				matched = true;
 			}
 			if(matched){
-				peakAmp = bestMatch->amp;
-				peakFrq = bestMatch->frq;
-				peakPhs = bestMatch->phs;
+				peakAmp = detected[i].amp;
+				peakFrq = detected[i].frq;
+				peakPhs = detected[i].phs;
 				tracks[j].update(true, peakAmp, peakFrq, peakPhs);
 				oscillators[j].update(peakAmp, peakFrq, peakPhs, hopSize);
-				bestMatch->assigned = true;
+				detected[i].assigned = true;
 				matches[j] = true;
 				numNewTracks--;
 			}
@@ -298,7 +323,8 @@ void SinusoidalModel::breakpoint(){
 				//std::cout << "Track " << j << " matched at frq " << peakFrq << ". Age: " << tracks[j].aliveFrames << std::endl;
 		}
 	}
-	std::cout << "num new after: " << numNewTracks << std::endl;
+	fadeFactor = 1.0 / (1.0 + logf(longestTrack));
+//	std::cout << "num new after: " << numNewTracks << std::endl;
 	//check if we need to start new tracks for remaining peaks
 	for(i = 1; i < maxTracksMinusOne && numNewTracks > 0; ++i){//looping over detections
 		if(detected[i].detected && !detected[i].assigned){//find a dead track idx and start a new track

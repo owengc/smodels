@@ -48,20 +48,26 @@ public:
 	int idx;
 	bool detected, assigned;
 	float distSq, amp, frq, phs, ampDiff, frqDiff, phsDiff;
-	TrackMatch(const float a = 0, const float f = 0, const float p = 0){
+	TrackMatch(const int i = -1, const float a = 0, const float f = 0, const float p = 0){
+		reset();
+		init(i, false, a, f, p);
+	}
+	void init(const int i, const bool d, const float a, const float f, const float p){
+		idx = i;
+		detected = d;
 		amp = a;
 		frq = f;
 		phs = p;
-		reset();
 	}
 	void reset(){
+		idx = -1;
+		amp = frq = phs = -MAXFLOAT;
 		ampDiff = frqDiff = phsDiff = distSq = MAXFLOAT;
 		detected = assigned = false;
-		idx = -1;
 	}
 	void setDistanceSq(const float a, const float f, const float p){
 		ampDiff = amp - a;
-		frqDiff = (frq > f)?frq - f:f - frq;//need abs for comparisons
+		frqDiff = fabs(frq - f);//need abs for comparisons
 		phsDiff = phs - p;
 		distSq = ampDiff * ampDiff + frqDiff * frqDiff + phsDiff * phsDiff;
 	}

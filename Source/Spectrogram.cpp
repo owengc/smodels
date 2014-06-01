@@ -80,7 +80,7 @@ void Spectrogram::paint (Graphics& g)
         else{
             g.setColour(Colour(0.15, 1.0, 1.0f, 1.0f));//yellow
         }
-        amplitudes = ourProcessor->getAnalysisResults(channel, Analysis::PARAMETER::MAG);
+        amplitudes = ourProcessor->getAnalysisResults(channel, Analysis::PARAMETER::AMP);
 		ampNormFactor = ourProcessor->getAmpNormFactor(channel);
         for(i = 0; i < graphResolution; ++i){
             barLeft = (i * barWidth);
@@ -88,7 +88,7 @@ void Spectrogram::paint (Graphics& g)
             amp = amplitudes[i] * ampNormFactor;
 			//std::cout << "spectrogram"
             if(amp > 0.0f){
-                barHeight = (amp < 0.0f)?graphHeight * amp:graphHeight; //clamp bar height to full for clipped magnitudes
+                barHeight = (amp < 1.0f)?graphHeight * amp:graphHeight; //clamp bar height to full for clipped magnitudes
                 barTop = graphTop + (graphHeight - barHeight);
                 g.drawVerticalLine(barLeft, barTop, graphBottom);
             }

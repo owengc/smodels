@@ -35,12 +35,14 @@ private:
     Track * tracks;
     Oscillator<float> * oscillators;
     Wavetable<float> * wavetable;
-    bool * matches, active;
-    float * magnitudeThresholds, * frequencyThresholds;
+    bool * matches;
+    float * magnitudeThresholds, * frequencyThresholds, * peakThresholds;
 	
-	TrackMatch * detected, ** matchMatrix;
-    int windowSize, hopSize, maxTracks, activeTracks, trackBirth, trackDeath;
-    float magThresholdFactor, frqThresholdFactor, samplingRateOverSize;
+	TrackMatch * detected, * candidates;
+//	std::vector<TrackMatch> matchMatrix, candidates;
+	
+    int windowSize, hopSize, maxTracks, activeTracks, trackBirth, trackDeath, longestTrack;
+    float magThresholdFactor, frqThresholdFactor, peakThresholdFactor, samplingRateOverSize, fadeFactor;
 	ThresholdFunction freqThreshFnc, magThreshFnc;
 	
 public:

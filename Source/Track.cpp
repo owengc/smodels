@@ -39,6 +39,9 @@ void Track::update(const bool matched, const float a, const float f, const float
             dyingFrames = 0;
         }
         aliveFrames++;
+		if(aliveFrames > model->longestTrack){
+			model->longestTrack = aliveFrames;
+		}
     }
     else{//in limbo
         if(status == STATUS::BIRTH){//birth failed
