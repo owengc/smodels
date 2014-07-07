@@ -37,9 +37,7 @@ private:
     Wavetable<float> * wavetable;
     bool * matches;
     float * magnitudeThresholds, * frequencyThresholds, * peakThresholds;
-	
 	TrackMatch * detected, * candidates;
-//	std::vector<TrackMatch> matchMatrix, candidates;
 	
     int windowSize, hopSize, maxTracks, activeTracks, trackBirth, trackDeath, longestTrack;
     float magThresholdFactor, frqThresholdFactor, peakThresholdFactor, samplingRateOverSize, fadeFactor;

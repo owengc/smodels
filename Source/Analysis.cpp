@@ -16,11 +16,12 @@ Analysis::Analysis(const WINDOW w, const int ws, const int hf, const int sr, con
     windowSize = ws;
     hopFactor = hf;
     hopSize = windowSize / hopFactor;//TODO: test if shrinking hop size will improve sound quality
-    paddedSize = (padded)?windowSize * 2:windowSize;//zero padding
+    paddedSize = (padded)?windowSize * 3:windowSize;//zero padding
     numBins = paddedSize / 2 + 1;
     numWrittenSinceFFT = 0;
     appetite = windowSize;
     
+	rms = 0.0;
     inputBuffer = new RingBuffer<float>(windowSize);
     outputBuffer = new RingBuffer<float>(windowSize);
     window = new float[windowSize]{0.0};
@@ -99,6 +100,7 @@ void Analysis::transform(const TRANSFORM t){
         }
     }
     else{//FFT
+		float sample, sum = 0.0;
         if(appetite != hopSize){
             //after the first frame, we'll only need hopSize more samples to take another FFT
             appetite = hopSize; //putting this here so it won't have to check very often. might be a better way
@@ -106,8 +108,11 @@ void Analysis::transform(const TRANSFORM t){
         //fill the real buffer with new input values
         memset(realBuffer, 0, sizeof(float) * paddedSize);
         for(int i = 0; i < windowSize; ++i){
-            realBuffer[i] = inputBuffer->read() * window[i];//apply window function
+			sample = inputBuffer->read();
+            realBuffer[i] = sample * window[i];//apply window function
+			sum += (sample * sample);
         }
+		rms = sqrt(sum / windowSize);
         fftwf_execute(forwardPlan);//0 means forward FFT
         numWrittenSinceFFT = 0;
         updateSpectrum();//update mag, phs values in this frame for each bin
@@ -134,7 +139,7 @@ void Analysis::updateSpectrum(){
 	normFactor = 1.0 / maxAmp;
 	denormFactor = maxAmp;
 	for(i = 1; i < numBins - 1; ++i){
-		magnitudes[i] = 20.0 * log10f(amplitudes[i] /* normFactor*/ + CRUMB);
+		magnitudes[i] = 20.0 * log10f(amplitudes[i] * normFactor + CRUMB);
 		//std::cout << "mag: " << magnitudes[i] << std::endl;
 	}
 }

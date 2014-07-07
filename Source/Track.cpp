@@ -65,11 +65,6 @@ void Track::update(const bool matched, const float a, const float f, const float
         active = true;
     }
 }
-
-//a track is active if it is alive or dying. track is not active if it is dead or in birth
-/*const bool Track::isActive(void) const{
-    return active;
-}*/
 const bool Track::isDead(void) const{
     return (status == STATUS::DEAD)?true:false;
 }

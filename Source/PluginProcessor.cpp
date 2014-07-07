@@ -215,6 +215,7 @@ void SmodelsAudioProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer&
     for (channel = 0; channel < numChannels; ++channel){
 		if(smodels[channel]->getNumActive() > 0){
 			channelData = buffer.getSampleData(channel);
+//			rms = smodels[channel]->getAnalysisResults(Analysis::PARAMETER::RMS);
 			for (index = 0; index < numSamples; ++index){
 				channelData[index] = smodels[channel]->operator()();
             

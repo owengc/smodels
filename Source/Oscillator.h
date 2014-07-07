@@ -114,8 +114,8 @@ public:
               fraction * wavetable->data[readPos + 1];
         
         //interpolate frequency and amplitude:
-		currentAmplitude = interpFraction * amplitude + oneMinusInterpFraction * targetAmplitude;
-		currentFrequency = interpFraction * frequency + oneMinusInterpFraction * targetFrequency;
+		currentAmplitude = oneMinusInterpFraction * amplitude + interpFraction * targetAmplitude;
+		currentFrequency = oneMinusInterpFraction * frequency + interpFraction * targetFrequency;
 		increment = (uint32_t)(currentFrequency * samplingInterval);
 		
         interpPhase += interpInc;

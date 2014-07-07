@@ -27,11 +27,11 @@
 class Analysis{
 public:
     enum class TRANSFORM{FFT, IFFT};
-    enum class PARAMETER{REAL, IMAG, AMP, MAG, PHS, FRQ};
+    enum class PARAMETER{REAL, IMAG, AMP, MAG, PHS, FRQ, RMS};
     enum class WINDOW{HANN, GAUSSIAN};
 private:
     int samplingRate, windowSize, hopSize, hopFactor, paddedSize, numBins, numWrittenSinceFFT, appetite;
-    float normFactor, denormFactor, samplingRateOverSize;
+    float rms, normFactor, denormFactor, samplingRateOverSize;
     bool padded;
     WINDOW windowType;
     RingBuffer<float> * inputBuffer;
@@ -53,6 +53,7 @@ public:
     int getWindowSize() const{return windowSize;}
     int getNumBins() const{return numBins;}
     int getAppetite() const{return appetite;}
+	float getRMS() const{return rms;}
     float getNormFactor() const{return normFactor;}
 	float getDenormFactor() const{return denormFactor;}
 	float getSamplingRateOverSize() const{return samplingRateOverSize;}
